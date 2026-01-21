@@ -124,7 +124,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
           <p className="text-blue-100 mb-8 text-lg">Join thousands of Nigerians accessing credit the smart way</p>
           <Link 
-            href="/signup"
+            href="auth/signup"
             className="inline-block px-8 py-4 bg-white text-blue-600 rounded-xl hover:bg-gray-50 transition-all font-semibold text-lg shadow-xl"
           >
             Apply Now
