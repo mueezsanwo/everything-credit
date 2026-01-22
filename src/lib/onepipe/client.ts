@@ -293,3 +293,87 @@ export async function collect(
   
   return callOnePipe(payload);
 }
+
+// lib/onepipe/client.ts (ADD these two new functions)
+
+/**
+ * Lookup Account - Get account details and verify account name
+ */
+export async function lookupAccount(
+  accountNumber: string,
+  bankCode: string,
+  customer: Customer
+) {
+  const requestRef = 'REQ' + Date.now();
+  
+  const payload = {
+    request_ref: requestRef,
+    request_type: 'lookup_account_min',
+    auth: {
+      type: 'bank.account',
+      secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
+      auth_provider: 'PaywithAccount',
+      route_mode: null
+    },
+    transaction: {
+      mock_mode: 'Live',
+      transaction_ref: 'TXN' + Date.now(),
+      transaction_desc: 'Account Lookup',
+      transaction_ref_parent: null,
+      amount: 0,
+      customer: {
+        customer_ref: customer.phone,
+        firstname: customer.firstName,
+        surname: customer.lastName,
+        email: customer.email,
+        mobile_no: customer.phone
+      },
+      meta: {},
+      details: {}
+    }
+  };
+  
+  return callOnePipe(payload);
+}
+
+/**
+ * Get Banks - Get list of banks linked to BVN (PWA-enabled only)
+ */
+export async function getBanks(
+  bvn: string,
+  customer: Customer,
+  pwaEnabledOnly: boolean = true
+) {
+  const requestRef = 'REQ' + Date.now();
+  
+  const payload = {
+    request_ref: requestRef,
+    request_type: 'get_banks',
+    auth: {
+      type: 'bvn',
+      secure: encryptBVN(bvn, APP_SECRET),
+      auth_provider: 'PaywithAccount',
+      route_mode: null
+    },
+    transaction: {
+      mock_mode: 'Inspect', // Change to 'Live' in production
+      transaction_ref: 'TXN' + Date.now(),
+      transaction_desc: 'Get Banks for BVN',
+      transaction_ref_parent: null,
+      amount: 0,
+      customer: {
+        customer_ref: customer.phone,
+        firstname: customer.firstName,
+        surname: customer.lastName,
+        email: customer.email,
+        mobile_no: customer.phone
+      },
+      meta: {
+        pwa_enabled_only: pwaEnabledOnly
+      },
+      details: null
+    }
+  };
+  
+  return callOnePipe(payload);
+}

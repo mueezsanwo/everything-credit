@@ -79,14 +79,17 @@ export function verifySalary(transactions: Transaction[]): SalaryVerificationRes
   };
 }
 
+
+// lib/credit/calculations.ts (UPDATE this function)
+
 /**
- * Calculate credit limit
- * @param verifiedSalary - Verified monthly salary
- * @returns Credit limit (35% of salary, max ₦500K)
+ * Calculate credit limit - NEW FORMULA
+ * @param declaredSalary - User's declared monthly salary
+ * @returns Credit limit (35% of salary, max ₦100K)
  */
-export function calculateCreditLimit(verifiedSalary: number): number {
-  const limit = verifiedSalary * 0.35;
-  return Math.min(Math.floor(limit), 500000);
+export function calculateCreditLimit(declaredSalary: number): number {
+  const limit = declaredSalary * 0.35;
+  return Math.min(Math.floor(limit), 100000); // Max ₦100,000
 }
 
 /**

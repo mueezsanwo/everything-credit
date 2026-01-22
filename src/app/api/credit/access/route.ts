@@ -1,207 +1,207 @@
-// app/api/credit/access/route.ts
-import { NextResponse } from "next/server";
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import { getStatement } from "@/lib/onepipe/client";
-import {
-  verifySalary,
-  calculateCreditLimit,
-  verifyNameMatch,
-} from "@/lib/credit/calculations";
+// app/api/credit/access/route.ts (REPLACE ENTIRE FILE)
+import { NextResponse } from 'next/server';
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/User';
+import { lookupAccount, getBanks } from '@/lib/onepipe/client';
+import { calculateCreditLimit, verifyNameMatch } from '@/lib/credit/calculations';
+import { isValidBVN, maskBVN } from '@/lib/utils/validation';
 
 export async function POST(request: Request) {
   try {
     await dbConnect();
-
+    
     const body = await request.json();
-    const { userId } = body;
-
+    const { userId, bvn } = body;
+    
     // Validate required fields
-    if (!userId) {
-      return NextResponse.json(
-        {
-          error: "User ID is required",
-        },
-        { status: 400 },
-      );
+    if (!userId || !bvn) {
+      return NextResponse.json({ 
+        error: 'User ID and BVN are required' 
+      }, { status: 400 });
     }
-
+    
+    // Validate BVN format
+    if (!isValidBVN(bvn)) {
+      return NextResponse.json({ 
+        error: 'Invalid BVN. Must be 11 digits.' 
+      }, { status: 400 });
+    }
+    
     // Find user
     const user = await User.findById(userId);
-
+    
     if (!user) {
-      return NextResponse.json(
-        {
-          error: "User not found",
-        },
-        { status: 404 },
-      );
+      return NextResponse.json({ 
+        error: 'User not found' 
+      }, { status: 404 });
     }
-
+    
     // Check if user is verified
-    if (!user.bvnVerified) {
-      return NextResponse.json(
-        {
-          error: "Please verify your BVN first",
-        },
-        { status: 400 },
-      );
+    if (!user.phoneVerified) {
+      return NextResponse.json({ 
+        error: 'Please verify your phone number first' 
+      }, { status: 400 });
     }
-
+    
     // Check if already accessed credit
     if (user.hasAccessedCredit) {
-      return NextResponse.json(
-        {
-          error: "You have already accessed credit",
-          creditData: {
-            creditLimit: user.creditLimit,
-            availableCredit: user.availableCredit,
-            verifiedSalary: user.verifiedSalary,
-          },
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ 
+        error: 'You have already accessed credit',
+        creditData: {
+          creditLimit: user.creditLimit,
+          availableCredit: user.availableCredit
+        }
+      }, { status: 400 });
     }
-
-    // Step 1: Get bank statement (last 3 months)
-    const endDate = new Date().toISOString().split("T")[0]; // Today
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 3); // 3 months ago
-    const startDateStr = startDate.toISOString().split("T")[0];
-
-    console.log("Fetching statement from", startDateStr, "to", endDate);
-
-    const statementResponse = await getStatement(
+    
+    // Check if user has declared salary
+    if (!user.monthlySalary || user.monthlySalary < 50000) {
+      return NextResponse.json({ 
+        error: 'Monthly salary must be at least ₦50,000 to access credit' 
+      }, { status: 400 });
+    }
+    
+    console.log('Starting credit verification for user:', user._id);
+    
+    // Step 1: Lookup Account - Verify account name
+    console.log('Step 1: Looking up account...');
+    
+    const accountResponse = await lookupAccount(
       user.accountNumber,
       user.bankCode,
-      startDateStr,
-      endDate,
       {
         phone: user.phone,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email,
-      },
+        email: user.email
+      }
     );
-
-    console.log("Statement Response:", statementResponse);
-
-    // Handle failure
-    if (statementResponse.status !== "Successful") {
-      return NextResponse.json(
-        {
-          error: "Failed to retrieve bank statement",
-          message: statementResponse.message,
-          details:
-            statementResponse.data?.errors || statementResponse.data?.error,
-        },
-        { status: 400 },
-      );
+    
+    console.log('Account Lookup Response:', accountResponse);
+    
+    if (accountResponse.status !== 'Successful') {
+      return NextResponse.json({ 
+        error: 'Failed to verify account details',
+        message: accountResponse.message,
+        details: accountResponse.data?.errors || accountResponse.data?.error
+      }, { status: 400 });
     }
-
-    const providerResponse = statementResponse.data?.provider_response;
-
-    if (!providerResponse) {
-      return NextResponse.json(
-        {
-          error: "No statement data returned from provider",
-        },
-        { status: 400 },
-      );
+    
+    const accountData = accountResponse.data?.provider_response;
+    
+    if (!accountData) {
+      return NextResponse.json({ 
+        error: 'No account data returned from provider' 
+      }, { status: 400 });
     }
-
-    // Step 2: Verify account name matches BVN name
-    const accountName = providerResponse.client_info?.name;
-
-    if (!accountName) {
-      return NextResponse.json(
-        {
-          error: "Could not retrieve account name from statement",
-        },
-        { status: 400 },
-      );
-    }
-
+    
+    // Verify account name matches user's name
+    const accountName = accountData.account_name;
     const userName = `${user.firstName} ${user.lastName}`;
+    
     const namesMatch = verifyNameMatch(userName, accountName);
-
+    
     if (!namesMatch) {
-      return NextResponse.json(
-        {
-          error: "Account name does not match your BVN name",
-          accountName: accountName,
-          bvnName: userName,
-          approved: false,
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ 
+        error: 'Account name does not match your registered name',
+        accountName: accountName,
+        registeredName: userName,
+        approved: false
+      }, { status: 400 });
     }
-
-    // Step 3: Verify salary from transactions
-    const transactions = providerResponse.statement_list || [];
-
-    if (transactions.length === 0) {
-      return NextResponse.json(
-        {
-          error: "No transactions found in your bank statement",
-          approved: false,
-        },
-        { status: 400 },
-      );
+    
+    console.log('✓ Account name verified');
+    
+    // Step 2: Get Banks - Verify bank is linked to BVN
+    console.log('Step 2: Getting BVN-linked banks...');
+    
+    const banksResponse = await getBanks(
+      bvn,
+      {
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      },
+      true // pwa_enabled_only
+    );
+    
+    console.log('Get Banks Response:', banksResponse);
+    
+    if (banksResponse.status !== 'Successful') {
+      return NextResponse.json({ 
+        error: 'Failed to verify BVN-linked banks',
+        message: banksResponse.message,
+        details: banksResponse.data?.errors || banksResponse.data?.error
+      }, { status: 400 });
     }
-
-    const salaryVerification = verifySalary(transactions);
-
-    if (!salaryVerification.verified) {
-      return NextResponse.json(
-        {
-          error: "Unable to verify salary",
-          reason: salaryVerification.reason,
-          approved: false,
-        },
-        { status: 400 },
-      );
+    
+    const banksData = banksResponse.data?.provider_response;
+    
+    if (!banksData || !banksData.banks) {
+      return NextResponse.json({ 
+        error: 'No banks data returned from provider' 
+      }, { status: 400 });
     }
-
-    // Step 4: Calculate credit limit
-    const creditLimit = calculateCreditLimit(salaryVerification.verifiedSalary);
-
-    // Step 5: Update user in database
+    
+    // Check if user's bank is in the BVN-linked banks list
+    const userBankLinked = banksData.banks.some(
+      (bank: any) => bank.bank_code === user.bankCode
+    );
+    
+    if (!userBankLinked) {
+      return NextResponse.json({ 
+        error: 'Your bank account is not linked to this BVN',
+        message: 'Please ensure your bank account is registered with your BVN',
+        approved: false
+      }, { status: 400 });
+    }
+    
+    console.log('✓ Bank verified as BVN-linked and PWA-enabled');
+    
+    // Step 3: Calculate credit limit (35% of declared salary, max ₦100K)
+    const creditLimit = calculateCreditLimit(user.monthlySalary);
+    
+    console.log('Credit limit calculated:', creditLimit);
+    
+    // Step 4: Update user in database
     await User.updateOne(
       { _id: userId },
       {
         hasAccessedCredit: true,
+        bvnVerified: true,
+        bvn: maskBVN(bvn),
         creditLimit: creditLimit,
         availableCredit: creditLimit,
-        verifiedSalary: salaryVerification.verifiedSalary,
         accountName: accountName,
         maxSingleDebit: creditLimit,
-      },
+        status: 'verified'
+      }
     );
-
-    // Step 6: Return success response
-    return NextResponse.json({
+    
+    console.log('✓ User updated with credit access');
+    
+    // Step 5: Return success response
+    return NextResponse.json({ 
       success: true,
       approved: true,
-      message: "Credit access approved",
+      message: 'Credit access approved',
       creditData: {
         creditLimit: creditLimit,
         availableCredit: creditLimit,
-        verifiedSalary: salaryVerification.verifiedSalary,
+        declaredSalary: user.monthlySalary,
         accountName: accountName,
         accountNumber: user.accountNumber,
         bankName: user.bankName,
-        maxSingleDebit: creditLimit,
-      },
+        maxSingleDebit: creditLimit
+      }
     });
+    
   } catch (error: any) {
-    console.error("Access credit error:", error);
-    return NextResponse.json(
-      {
-        error: "Credit access failed. Please try again.",
-        details: error.message,
-      },
-      { status: 500 },
-    );
+    console.error('Access credit error:', error);
+    return NextResponse.json({ 
+      error: 'Credit access failed. Please try again.',
+      details: error.message
+    }, { status: 500 });
   }
 }
