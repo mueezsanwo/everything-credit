@@ -1,9 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/auth/signup/route.ts
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import OTP from "@/models/OTP";
+import Otp from "@/models/OTP";
 import { getBankCode } from "@/lib/utils/banks";
 import { generateOTP, getOTPExpiration } from "@/lib/utils/otp";
 import {
@@ -13,10 +12,12 @@ import {
   isValidAccountNumber,
   validatePassword,
 } from "@/lib/utils/validation";
+import connectDB from "../../lib/mongodb";
+import User from "@/models/User";
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
     const {
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
       bankName,
       bankCode,
       accountNumber,
+      isSalaryAccount: Boolean(isSalaryAccount),
       status: "pending_phone_verification",
       role: "user",
     });
@@ -153,7 +155,7 @@ export async function POST(request: Request) {
     const expiresAt = getOTPExpiration();
 
     // Save OTP to database
-    await OTP.create({
+    await Otp.create({
       phone: formattedPhone,
       email: email.toLowerCase(),
       otp,

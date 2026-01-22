@@ -1,5 +1,50 @@
 // models/User.ts
-import mongoose from 'mongoose';
+import mongoose, { Model } from 'mongoose';
+
+export interface IUser extends mongoose.Document {
+  email: string;
+  password: string;
+  role: 'user' | 'admin';
+  
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address?: string;
+  
+  companyName?: string;
+  occupation?: string;
+  workEmail?: string;
+  monthlySalary?: number;
+  
+  bvn?: string;
+  bankName?: string;
+  bankCode?: string;
+  accountNumber?: string;
+  accountName?: string;
+  
+  hasAccessedCredit: boolean;
+  creditLimit: number;
+  availableCredit: number;
+  verifiedSalary?: number;
+  maxSingleDebit?: number;
+  
+  hasMandateCreated: boolean;
+  mandateRef?: string;
+  mandateToken?: string;
+  mandateStatus: 'pending' | 'active' | 'expired';
+  mandateActivatedAt?: Date;
+  
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  bvnVerified: boolean;
+  
+  status: 'pending_phone_verification' | 'pending_bvn_verification' | 'verified' | 'suspended';
+  
+  lastLogin?: Date;
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const UserSchema = new mongoose.Schema({
   // Authentication
@@ -113,4 +158,7 @@ UserSchema.index({ status: 1 });
 UserSchema.index({ role: 1 });
 
 // Prevent model recompilation in development
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+
+const User: Model<IUser> =
+  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export default User;
