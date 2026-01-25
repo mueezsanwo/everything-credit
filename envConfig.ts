@@ -10,8 +10,8 @@ const getEnvironmentVariable = (environmentVariable: string): string => {
 };
 
 export const envs = {
-  GOOGLE_CLIENT_SECRET: getEnvironmentVariable("GOOGLE_CLIENT_SECRET"),
-  GOOGLE_CLIENT_ID: getEnvironmentVariable("GOOGLE_CLIENT_ID"),
+//   GOOGLE_CLIENT_SECRET: getEnvironmentVariable("GOOGLE_CLIENT_SECRET"),
+//   GOOGLE_CLIENT_ID: getEnvironmentVariable("GOOGLE_CLIENT_ID"),
   //   CLOUDINARY_CLOUD_NAME: getEnvironmentVariable("CLOUDINARY_CLOUD_NAME"),
   //   CLOUDINARY_API_KEY: getEnvironmentVariable("CLOUDINARY_API_KEY"),
   //   CLOUDINARY_API_SECRET: getEnvironmentVariable("CLOUDINARY_API_SECRET"),

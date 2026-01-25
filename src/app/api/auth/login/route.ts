@@ -1,13 +1,15 @@
 // app/api/auth/login/route.ts
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import { isValidEmail } from "@/lib/utils/validation";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import connectDB from "../../lib/mongodb";
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
     const { email, password } = body;
@@ -58,6 +60,20 @@ export async function POST(request: Request) {
       );
     }
 
+      const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET!,
+        {
+          expiresIn: "1d",
+        }
+      );
+
+      (await cookies()).set("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      });
     // Update last login
     await User.updateOne({ _id: user._id }, { lastLogin: new Date() });
 
@@ -78,6 +94,7 @@ export async function POST(request: Request) {
         hasAccessedCredit: user.hasAccessedCredit,
         creditLimit: user.creditLimit,
         availableCredit: user.availableCredit,
+        token,
       },
     });
   } catch (error) {

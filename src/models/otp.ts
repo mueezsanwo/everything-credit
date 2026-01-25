@@ -14,12 +14,14 @@ export interface IOTP extends mongoose.Document {
 }
 
 const OTPSchema = new mongoose.Schema({
-  phone: { 
+  email: { 
     type: String, 
     required: true 
   },
-  
-  email: String,
+  phone: { 
+    type: String, 
+    required: false 
+  },
   
   otp: { 
     type: String, 
@@ -51,7 +53,7 @@ OTPSchema.index({ email: 1, type: 1 });
 OTPSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // Auto-delete expired OTPs
 
 const Otp: Model<IOTP> =
-  mongoose.models.OTP || mongoose.model<IOTP>("Otp", OTPSchema);
+  mongoose.models.OTP || mongoose.model<IOTP>("OTP", OTPSchema);
 export default Otp;
 
 // export default mongoose.models.OTP || mongoose.model('OTP', OTPSchema);

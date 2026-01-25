@@ -10,13 +10,13 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const body = await request.json();
-    const { phone, otp } = body;
+    const { email, otp } = body;
 
     // Validate required fields
-    if (!phone || !otp) {
+    if (!email || !otp) {
       return NextResponse.json(
         {
-          error: "Phone number and OTP are required",
+          error: "Email and OTP are required",
         },
         { status: 400 },
       );
@@ -24,15 +24,15 @@ export async function POST(request: Request) {
 
     // Find OTP record
     const otpRecord = await OTP.findOne({
-      phone,
-      type: "phone",
+      email,
+      type: "email",
       verified: false,
     }).sort({ createdAt: -1 }); // Get most recent
 
     if (!otpRecord) {
       return NextResponse.json(
         {
-          error: "No OTP found for this phone number",
+          error: "No OTP found for this email. Please request a new one.",
         },
         { status: 404 },
       );
@@ -63,9 +63,9 @@ export async function POST(request: Request) {
 
     // Update user status
     const user = await User.findOneAndUpdate(
-      { phone },
+      { email },
       {
-        phoneVerified: true,
+        emailVerified: true,
         status: "pending_bvn_verification",
       },
       { new: true },
@@ -82,15 +82,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Phone verified successfully",
+      message: "email verified successfully",
       userId: user._id,
       nextStep: "bvn_verification",
     });
   } catch (error) {
-    console.error("Verify phone error:", error);
+    console.error("Verify email error:", error);
     return NextResponse.json(
       {
-        error: "Phone verification failed. Please try again.",
+        error: "email verification failed. Please try again.",
       },
       { status: 500 },
     );

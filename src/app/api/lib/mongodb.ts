@@ -2,8 +2,7 @@ import mongoose from "mongoose";
 import { envs } from "../../../../envConfig";
 
 const MONGODB_URI =
-  envs.MONGODB_URI ||
-  "mongodb+srv://mueezsanwo_db_user:58ReSbX21Hq1aVVh@cluster.mongodb.net/everythingcredit";
+  envs.MONGODB_URI 
 
 
 let isConnected = false; // Global flag for connection state
