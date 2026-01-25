@@ -6,7 +6,7 @@ import {
   generateSignature,
 } from "./encryption";
 
-const ONEPIPE_BASE_URL = "https://api.onepipe.io";
+const ONEPIPE_BASE_URL = "https://api.dev.onepipe.io";
 const API_KEY = process.env.ONEPIPE_API_KEY!;
 const APP_CODE = process.env.ONEPIPE_APP_CODE!;
 const APP_SECRET = process.env.ONEPIPE_APP_SECRET!;
@@ -48,7 +48,6 @@ interface OnePipeResponse {
  */
 async function callOnePipe(payload: any) {
   const signature = generateSignature(payload.request_ref, APP_SECRET);
-
   const response = await fetch(`${ONEPIPE_BASE_URL}/v2/transact`, {
     method: "POST",
     headers: {
@@ -58,7 +57,6 @@ async function callOnePipe(payload: any) {
     },
     body: JSON.stringify(payload),
   });
-  console.log("signature:", signature);
 
   return response.json();
 }
@@ -338,10 +336,9 @@ export async function lookupAccount(
   bankCode: string,
   customer: Customer
 ): Promise<OnePipeResponse> {
-  const requestRef = "REQ" + Date.now();
-
+  const requestRef = Date.now();
   const payload = {
-    request_ref: 5923907295390901,
+    request_ref:  requestRef,
     request_type: "lookup_account_min",
     auth: {
       type: "bank.account",
@@ -351,7 +348,7 @@ export async function lookupAccount(
     },
     transaction: {
       mock_mode: "Live",
-      transaction_ref: 59239072953909,
+      transaction_ref:  requestRef,
       transaction_desc: "A random transaction",
       transaction_ref_parent: null,
       amount: 0,
@@ -366,7 +363,6 @@ export async function lookupAccount(
       details: {},
     },
   };
-  console.log("OnePipe Lookup Payload:", payload);
 
   return callOnePipe(payload);
 }

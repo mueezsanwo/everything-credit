@@ -10,22 +10,15 @@ import crypto from "crypto";
  */
 export function encryptTripleDES(
   plainText: string,
-  APP_SECRET: string
+  secretKey: string
 ): string {
-  // Correct: use UTF-8, not UTF-16LE
-  const key = crypto.createHash("md5").update(APP_SECRET, "utf8").digest(); // 16 bytes
-  const fullKey = Buffer.concat([key, key.slice(0, 8)]); // 24 bytes for 3DES
-  const iv = Buffer.alloc(8, 0); // 8-byte zero IV
+    const bufferedKey = Buffer.from(secretKey, 'utf16le');
+    const key = crypto.createHash('md5').update(bufferedKey).digest();
+    const newKey = Buffer.concat([key, key.slice(0, 8)]);
+    const IV = Buffer.alloc(8, '\0');
+    const cipher = crypto.createCipheriv('des-ede3-cbc', newKey, IV).setAutoPadding(true);
+    return cipher.update(plainText, 'utf8', 'base64') + cipher.final('base64');
 
-  const cipher = crypto.createCipheriv("des-ede3-cbc", fullKey, iv);
-  cipher.setAutoPadding(true);
-
-  const encrypted = Buffer.concat([
-    cipher.update(plainText, "utf8"),
-    cipher.final(),
-  ]);
-  console.log({ encrypted: encrypted.toString("base64") });
-  return encrypted.toString("base64");
 }
 
 /**
@@ -55,7 +48,6 @@ export function generateSignature(
   APP_SECRET: string
 ): string {
   const payload = `${requestRef};${APP_SECRET}`;
-  console.log({ payload });
   return crypto.createHash("md5").update(payload, "utf8").digest("hex");
 }
 
