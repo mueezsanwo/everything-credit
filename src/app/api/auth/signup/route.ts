@@ -1,29 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // /* eslint-disable @typescript-eslint/no-explicit-any */
 // // app/api/auth/signup/route.ts
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import Otp from "@/models/OTP";
-import { getBankCode } from "@/lib/utils/banks";
-import { generateOTP, getOTPExpiration } from "@/lib/utils/otp";
+import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import Otp from '@/models/OTP';
+import { getBankCode } from '@/lib/utils/banks';
+import { generateOTP, getOTPExpiration } from '@/lib/utils/otp';
 import {
   isValidEmail,
   isValidPhone,
   formatPhoneNumber,
   isValidAccountNumber,
   validatePassword,
-} from "@/lib/utils/validation";
-import connectDB from "../../lib/mongodb";
-import User from "@/models/User";
-import { sendEmail } from "../../lib/email";
-import { lookupAccount } from "@/lib/onepipe/client";
-import { encryptBankAccount } from "@/lib/onepipe/encryption";
+} from '@/lib/utils/validation';
+import connectDB from '../../lib/mongodb';
+import User from '@/models/User';
+import { sendEmail } from '../../lib/email';
+import { lookupAccount } from '@/lib/onepipe/client';
+import { encryptBankAccount } from '@/lib/onepipe/encryption';
 
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z\s]/g, "")
-    .replace(/\s+/g, " ")
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 const APP_SECRET = process.env.ONEPIPE_APP_SECRET!;
@@ -53,29 +53,29 @@ export async function POST(request: Request) {
 
     if (!firstName || !lastName || !phone || !email || !password) {
       return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
+        { error: 'Missing required fields' },
+        { status: 400 },
       );
     }
 
     if (!agreedToTerms) {
       return NextResponse.json(
-        { error: "You must agree to the terms and conditions" },
-        { status: 400 }
+        { error: 'You must agree to the terms and conditions' },
+        { status: 400 },
       );
     }
 
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
+        { error: 'Invalid email format' },
+        { status: 400 },
       );
     }
 
     if (!isValidPhone(phone)) {
       return NextResponse.json(
-        { error: "Invalid phone number. Must be 11 digits" },
-        { status: 400 }
+        { error: 'Invalid phone number. Must be 11 digits' },
+        { status: 400 },
       );
     }
 
@@ -83,14 +83,14 @@ export async function POST(request: Request) {
     if (!passwordValidation.isValid) {
       return NextResponse.json(
         { error: passwordValidation.message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!isValidAccountNumber(accountNumber)) {
       return NextResponse.json(
-        { error: "Invalid account number. Must be 10 digits" },
-        { status: 400 }
+        { error: 'Invalid account number. Must be 10 digits' },
+        { status: 400 },
       );
     }
 
@@ -104,8 +104,8 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "User with this email or phone already exists" },
-        { status: 400 }
+        { error: 'User with this email or phone already exists' },
+        { status: 400 },
       );
     }
 
@@ -113,18 +113,14 @@ export async function POST(request: Request) {
 
     const bankCode = getBankCode(bankName);
     if (!bankCode) {
-      return NextResponse.json({ error: "Invalid bank name" }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid bank name' }, { status: 400 });
     }
 
     const securePayload = encryptBankAccount(
       accountNumber,
       bankCode,
-      APP_SECRET
+      APP_SECRET,
     );
-    console.log("Account Number:", accountNumber);
-    console.log("Bank Code:", bankCode);
-    
-    console.log("Encrypted secure payload for OnePipe:", securePayload);
 
     const lookupResponse = await lookupAccount(accountNumber, bankCode, {
       firstName,
@@ -133,22 +129,17 @@ export async function POST(request: Request) {
       phone: formattedPhone,
     });
 
-    console.log(
-      "ONEPIPE LOOKUP RESPONSE:",
-      JSON.stringify(lookupResponse, null, 2)
-    );
-
     const providerData = lookupResponse?.data;
 
     const responseCode =
       providerData?.provider_response_code ||
       providerData?.provider_responde_code; // OnePipe typo fallback
 
-    if (!providerData || responseCode !== "00") {
+    if (!providerData || responseCode !== '00') {
       const message =
         providerData?.error?.message ||
         providerData?.errors?.[0]?.message ||
-        "Unable to verify bank account details";
+        'Unable to verify bank account details';
 
       return NextResponse.json({ error: message }, { status: 400 });
     }
@@ -157,8 +148,8 @@ export async function POST(request: Request) {
 
     if (!accountName) {
       return NextResponse.json(
-        { error: "Unable to retrieve account name from bank" },
-        { status: 400 }
+        { error: 'Unable to retrieve account name from bank' },
+        { status: 400 },
       );
     }
 
@@ -167,20 +158,32 @@ export async function POST(request: Request) {
     const normalize = (name: string) =>
       name
         .toUpperCase()
-        .replace(/[^A-Z\s]/g, "")
-        .replace(/\s+/g, " ")
+        .replace(/[^A-Z\s]/g, '')
+        .replace(/\s+/g, ' ')
         .trim();
 
     const normalizedAccountName = normalize(accountName);
     const normalizedUserName = normalize(`${firstName} ${lastName}`);
+    const tokenize = (name: string) =>
+      name
+        .split(' ')
+        .filter(Boolean)
+        .map((n) => n.trim());
 
-    if (!normalizedAccountName.includes(normalizedUserName)) {
+    const accountTokens = tokenize(normalizedAccountName);
+    const userTokens = tokenize(normalizedUserName);
+
+    const isMatch = userTokens.every((token) =>
+      accountTokens.some((acc) => acc.startsWith(token)),
+    );
+
+    if (!isMatch) {
       return NextResponse.json(
         {
           error:
-            "Bank account name does not match the name you provided. Please use your own bank account.",
+            'Bank account name does not match the name you provided. Please use your own bank account.',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -203,8 +206,8 @@ export async function POST(request: Request) {
       bankCode,
       accountNumber,
       isSalaryAccount: Boolean(isSalaryAccount),
-      status: "pending_phone_verification",
-      role: "user",
+      status: 'pending_phone_verification',
+      role: 'user',
     });
 
     /* ------------------ OTP ------------------ */
@@ -216,14 +219,14 @@ export async function POST(request: Request) {
       phone: formattedPhone,
       email: email.toLowerCase(),
       otp,
-      type: "email",
+      type: 'email',
       verified: false,
       expiresAt,
     });
 
     await sendEmail({
       to: email,
-      subject: "Verify Your Email",
+      subject: 'Verify Your Email',
       html: `<p>Your OTP for email verification is: <strong>${otp}</strong></p>`,
       text: `Your OTP for email verification is: ${otp}`,
     });
@@ -231,30 +234,29 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
-        message: "User created successfully. Please verify your email.",
+        message: 'User created successfully. Please verify your email.',
         userId: user._id,
         phone: formattedPhone,
-        otp: process.env.NODE_ENV === "development" ? otp : undefined,
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
-    console.error("Signup error:", error);
+    console.error('Signup error:', error);
 
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: "User with this email or phone already exists" },
-        { status: 400 }
+        { error: 'User with this email or phone already exists' },
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
-      { error: "Signup failed. Please try again." },
-      { status: 500 }
+      { error: 'Signup failed. Please try again.' },
+      { status: 500 },
     );
   }
 }
-
 
 // // app/api/auth/signup/route.ts
 // import { NextResponse } from "next/server";
