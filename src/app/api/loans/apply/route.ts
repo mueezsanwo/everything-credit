@@ -1,9 +1,9 @@
 // app/api/loans/apply/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import Loan from "@/models/Loan";
-import Payment from "@/models/Payment";
+import User from "@/models/user";
+import Loan from "@/models/loan";
+import Payment from "@/models/payment";
 import { createMandate, disburse } from "@/lib/onepipe/client";
 import { calculateLoanDetails } from "@/lib/credit/calculations";
 import { generateLoanPayment } from "@/lib/payments/scheduler";

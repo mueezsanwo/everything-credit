@@ -5,11 +5,11 @@ import crypto from 'crypto';
  * Encrypt data using TripleDES algorithm
  * Used for auth.secure field in OnePipe requests
  * @param plainText - Text to encrypt
- * @param secretKey - Your OnePipe app secret
+ * @param APP_SECRET - Your OnePipe app secret
  * @returns Base64 encoded encrypted string
  */
-export function encryptTripleDES(plainText: string, secretKey: string): string {
-  const bufferedKey = Buffer.from(secretKey, 'utf16le');
+export function encryptTripleDES(plainText: string, APP_SECRET: string): string {
+  const bufferedKey = Buffer.from(APP_SECRET, 'utf16le');
   const key = crypto.createHash('md5').update(bufferedKey).digest();
   const newKey = Buffer.concat([key, key.slice(0, 8)]);
   const IV = Buffer.alloc(8, '\0');
@@ -21,11 +21,11 @@ export function encryptTripleDES(plainText: string, secretKey: string): string {
  * Generate MD5 signature for request headers
  * Used for Signature header in OnePipe requests
  * @param requestRef - Unique request reference
- * @param appSecret - Your OnePipe app secret
+ * @param APP_SECRET - Your OnePipe app secret
  * @returns MD5 hash in hex format
  */
-export function generateSignature(requestRef: string, appSecret: string): string {
-  const payload = `${requestRef};${appSecret}`;
+export function generateSignature(requestRef: string, APP_SECRET: string): string {
+  const payload = `${requestRef};${APP_SECRET}`;
   return crypto.createHash('md5').update(payload).digest('hex');
 }
 
@@ -34,15 +34,15 @@ export function generateSignature(requestRef: string, appSecret: string): string
  * Used to validate incoming webhooks from OnePipe
  * @param requestRef - Request reference from webhook
  * @param receivedSignature - Signature from webhook headers
- * @param appSecret - Your OnePipe app secret
+ * @param APP_SECRET - Your OnePipe app secret
  * @returns True if signature is valid
  */
 export function verifyWebhookSignature(
-  requestRef: string, 
-  receivedSignature: string, 
-  appSecret: string
+  requestRef: string,
+  receivedSignature: string,
+  APP_SECRET: string
 ): boolean {
-  const expectedSignature = generateSignature(requestRef, appSecret);
+  const expectedSignature = generateSignature(requestRef, APP_SECRET);
   return expectedSignature === receivedSignature;
 }
 
@@ -51,24 +51,24 @@ export function verifyWebhookSignature(
  * Format: {accountNumber};{bankCode}
  * @param accountNumber - 10-digit account number
  * @param bankCode - CBN bank code
- * @param secretKey - Your OnePipe app secret
+ * @param APP_SECRET - Your OnePipe app secret
  * @returns Encrypted string
  */
 export function encryptBankAccount(
-  accountNumber: string, 
-  bankCode: string, 
-  secretKey: string
+  accountNumber: string,
+  bankCode: string,
+  APP_SECRET: string
 ): string {
   const plainText = `${accountNumber};${bankCode}`;
-  return encryptTripleDES(plainText, secretKey);
+  return encryptTripleDES(plainText, APP_SECRET);
 }
 
 /**
  * Encrypt BVN for OnePipe
  * @param bvn - 11-digit BVN
- * @param secretKey - Your OnePipe app secret
+ * @param APP_SECRET - Your OnePipe app secret
  * @returns Encrypted string
  */
-export function encryptBVN(bvn: string, secretKey: string): string {
-  return encryptTripleDES(bvn, secretKey);
+export function encryptBVN(bvn: string, APP_SECRET: string): string {
+  return encryptTripleDES(bvn, APP_SECRET);
 }

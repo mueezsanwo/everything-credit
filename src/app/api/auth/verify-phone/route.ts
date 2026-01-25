@@ -1,8 +1,8 @@
 // app/api/auth/verify-phone/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import OTP from "@/models/OTP";
+import User from "@/models/user";
+import OTP from "@/models/otp";
 import { isOTPExpired } from "@/lib/utils/otp";
 
 export async function POST(request: Request) {

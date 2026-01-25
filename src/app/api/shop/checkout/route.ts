@@ -1,9 +1,9 @@
 // app/api/shop/checkout/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import Purchase from "@/models/Purchase";
-import Payment from "@/models/Payment";
+import User from "@/models/user";
+import Purchase from "@/models/purchase";
+import Payment from "@/models/payment";
 import { createMandate } from "@/lib/onepipe/client";
 import { calculatePurchaseDetails } from "@/lib/credit/calculations";
 import { generatePaymentSchedule } from "@/lib/payments/scheduler";

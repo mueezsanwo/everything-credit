@@ -1,8 +1,8 @@
 // app/api/cron/collect-payments/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import Payment from "@/models/Payment";
-import User from "@/models/User";
+import Payment from "@/models/payment";
+import User from "@/models/user";
 import { collect } from "@/lib/onepipe/client";
 
 const CRON_SECRET = process.env.CRON_SECRET!;

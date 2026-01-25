@@ -1,11 +1,11 @@
 // app/api/webhooks/onepipe/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import Webhook from "@/models/Webhook";
-import Payment from "@/models/Payment";
-import Loan from "@/models/Loan";
-import Purchase from "@/models/Purchase";
-import User from "@/models/User";
+import Webhook from "@/models/webhook";
+import Payment from "@/models/payment";
+import Loan from "@/models/loan";
+import Purchase from "@/models/purchase";
+import User from "@/models/user";
 import { verifyWebhookSignature } from "@/lib/onepipe/encryption";
 import {
   shouldTriggerDelivery,

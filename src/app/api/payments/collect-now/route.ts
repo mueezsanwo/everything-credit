@@ -1,8 +1,8 @@
 // app/api/payments/collect-now/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import Payment from "@/models/Payment";
-import User from "@/models/User";
+import Payment from "@/models/payment";
+import User from "@/models/user";
 import { collect } from "@/lib/onepipe/client";
 
 export async function POST(request: Request) {

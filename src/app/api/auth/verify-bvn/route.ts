@@ -1,7 +1,7 @@
 // app/api/auth/verify-bvn/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
+import User from "@/models/user";
 import { lookupBVN } from "@/lib/onepipe/client";
 import { verifyNameMatch } from "@/lib/credit/calculations";
 import { isValidBVN, maskBVN } from "@/lib/utils/validation";

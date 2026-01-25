@@ -1,10 +1,10 @@
 // app/api/payments/list/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import Loan from "@/models/Loan";
-import Purchase from "@/models/Purchase";
-import Payment from "@/models/Payment";
+import User from "@/models/user";
+import Loan from "@/models/loan";
+import Purchase from "@/models/purchase";
+import Payment from "@/models/payment";
 
 export async function GET(request: Request) {
   try {

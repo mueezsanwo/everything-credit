@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
+import User from "@/models/user";
 import { isValidEmail } from "@/lib/utils/validation";
 
 export async function POST(request: Request) {

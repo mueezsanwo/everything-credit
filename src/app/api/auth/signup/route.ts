@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/User";
-import OTP from "@/models/OTP";
+import User from "@/models/user";
+import OTP from "@/models/otp";
 import { getBankCode } from "@/lib/utils/banks";
 import { generateOTP, getOTPExpiration } from "@/lib/utils/otp";
 import {
