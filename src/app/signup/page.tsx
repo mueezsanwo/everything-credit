@@ -5,11 +5,16 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CreditCard, User, Hash, Briefcase, Building2, Mail, Landmark, Shield, ArrowLeft } from 'lucide-react';
+import { signUp } from '@/lib';
+import { SignUpData } from '@/lib/interface';
+import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/toast';
 
 export default function Signup() {
   const router = useRouter();
   const [signupStep, setSignupStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -31,7 +36,58 @@ export default function Signup() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const validateStep = () => {
+    if (signupStep === 1) {
+      if (!formData.firstName || !formData.lastName || !formData.phone || !formData.email || !formData.password || !formData.address) {
+        showToast('Please fill in all required fields', 'error');
+        return false;
+      }
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        showToast('Please enter a valid email address', 'error');
+        return false;
+      }
+      // Basic phone validation (Nigerian format)
+      if (formData.phone.length < 11) {
+        showToast('Please enter a valid phone number', 'error');
+        return false;
+      }
+      // Password validation
+      if (formData.password.length < 6) {
+        showToast('Password must be at least 6 characters', 'error');
+        return false;
+      }
+    }
+    
+    if (signupStep === 2) {
+      if (!formData.companyName || !formData.occupation || !formData.monthlySalary) {
+        showToast('Please fill in all employment details', 'error');
+        return false;
+      }
+    }
+    
+    if (signupStep === 3) {
+      if (!formData.bankName || !formData.accountNumber) {
+        showToast('Please fill in all banking details', 'error');
+        return false;
+      }
+      if (formData.accountNumber.length !== 10) {
+        showToast('Account number must be 10 digits', 'error');
+        return false;
+      }
+      if (!formData.agreedToTerms) {
+        showToast('Please agree to the terms and conditions', 'error');
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
   const handleNextStep = () => {
+    if (!validateStep()) return;
+    
     if (signupStep < 3) {
       setSignupStep(signupStep + 1);
     } else {
@@ -45,77 +101,123 @@ export default function Signup() {
     }
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    // Here we'll call the API to create user account
-    // For now, simulate API call
-    setTimeout(() => {
-      router.push('/verify-phone');
-    }, 1000);
-  };
+ const handleSubmit = async () => {
+  if (!validateStep()) return;
+  
+  setLoading(true);
+  
+  try {
+    const signUpData: SignUpData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      phone: formData.phone,
+      email: formData.email,
+      password: formData.password,
+      address: formData.address,
+      companyName: formData.companyName,
+      occupation: formData.occupation,
+      workEmail: formData.workEmail,
+      monthlySalary: Number(formData.monthlySalary),
+      bankName: formData.bankName,
+      accountNumber: formData.accountNumber,
+      isSalaryAccount: formData.isSalaryAccount,
+      agreedToTerms: formData.agreedToTerms
+    };
+
+    const response = await signUp(signUpData);
+
+    if (response.success) {
+      localStorage.setItem('verificationEmail', formData.email);
+      
+      showToast('Account created! Please verify your email.', 'success');
+      
+      setTimeout(() => {
+        router.push('/verify-email');
+      }, 1500);
+    } else {
+      showToast(response.message || 'Sign up failed. An error occurred.', 'error');
+    } 
+  } catch (err: any) {
+    const errorMessage = err?.message || 'An error occurred. Please try again.';
+    showToast(errorMessage, 'error');
+    console.error('Sign up error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-4">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <CreditCard className="w-8 h-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">Everything Credit</span>
+    <>
+      <Toast 
+        show={toast.show} 
+        message={toast.message} 
+        type={toast.type} 
+        onClose={hideToast} 
+      />
+      
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-4">
+        <div className="max-w-2xl mx-auto px-4">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <CreditCard className="w-8 h-8 text-blue-600" />
+                <span className="text-2xl font-bold text-gray-900">Everything Credit</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get Your Credit in Minutes</h2>
+              <p className="text-gray-600">Step {signupStep} of 3</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Get Your Credit in Minutes</h2>
-            <p className="text-gray-600">Step {signupStep} of 4</p>
           </div>
-        </div>
 
-        {/* Progress Bar */}
-        <div className="bg-white rounded-full h-2 mb-8">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(signupStep / 4) * 100}%` }}
-          />
-        </div>
+          {/* Progress Bar */}
+          <div className="bg-white rounded-full h-2 mb-8">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(signupStep / 3) * 100}%` }}
+            />
+          </div>
 
-        {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {signupStep === 1 && <PersonalInfoStep formData={formData} updateFormData={updateFormData} />}
-          {signupStep === 2 && <EmploymentStep formData={formData} updateFormData={updateFormData} />}
-          {signupStep === 3 && <BankingStep formData={formData} updateFormData={updateFormData} />}
+          {/* Form Card */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            {signupStep === 1 && <PersonalInfoStep formData={formData} updateFormData={updateFormData} loading={loading} />}
+            {signupStep === 2 && <EmploymentStep formData={formData} updateFormData={updateFormData} loading={loading} />}
+            {signupStep === 3 && <BankingStep formData={formData} updateFormData={updateFormData} loading={loading} />}
 
-          {/* Navigation Buttons */}
-          <div className="flex gap-4 mt-8">
-            {signupStep > 1 && (
+            {/* Navigation Buttons */}
+            <div className="flex gap-4 mt-8">
+              {signupStep > 1 && (
+                <button
+                  onClick={handlePrevStep}
+                  disabled={loading}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                >
+                  Back
+                </button>
+              )}
               <button
-                onClick={handlePrevStep}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                onClick={handleNextStep}
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Back
+                {loading ? 'Processing...' : signupStep === 3 ? 'Submit Application' : 'Continue'}
               </button>
-            )}
-            <button
-              onClick={handleNextStep}
-              disabled={loading || (signupStep === 3 && !formData.agreedToTerms)}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Processing...' : signupStep === 3 ? 'Submit Application' : 'Continue'}
-            </button>
+            </div>
           </div>
-        </div>
 
-        <p className="text-center text-sm text-gray-600 mt-6">
-          Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline font-medium">
-            Login here
-          </Link>
-        </p>
+          <p className="text-center text-sm text-gray-600 mt-6">
+            Already have an account?{' '}
+            <Link href="/login" className="text-blue-600 hover:underline font-medium">
+              Login here
+            </Link>
+          </p>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
 // Step Components
-function PersonalInfoStep({ formData, updateFormData }: any) {
+function PersonalInfoStep({ formData, updateFormData, loading }: any) {
   return (
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -136,6 +238,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="John"
               required
+              disabled={loading}
             />
           </div>
           <div>
@@ -147,6 +250,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="Doe"
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -160,6 +264,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="08012345678"
               required
+              disabled={loading}
             />
           </div>
           <div>
@@ -171,6 +276,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="john@example.com"
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -183,6 +289,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
             placeholder="Enter your residential address"
             rows={2}
             required
+            disabled={loading}
           />
         </div>
         <div>
@@ -194,6 +301,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
             placeholder="Create a strong password"
             required
+            disabled={loading}
           />
         </div>
       </div>
@@ -201,11 +309,7 @@ function PersonalInfoStep({ formData, updateFormData }: any) {
   );
 }
 
-function IdentificationStep({ formData, updateFormData }: any) {
-  return null; // Removed - BVN will be collected after phone verification
-}
-
-function EmploymentStep({ formData, updateFormData }: any) {
+function EmploymentStep({ formData, updateFormData, loading }: any) {
   return (
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -222,6 +326,7 @@ function EmploymentStep({ formData, updateFormData }: any) {
               onChange={(e) => updateFormData('companyName', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="Acme Corporation"
+              disabled={loading}
             />
           </div>
           <div>
@@ -232,6 +337,7 @@ function EmploymentStep({ formData, updateFormData }: any) {
               onChange={(e) => updateFormData('occupation', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="Software Engineer"
+              disabled={loading}
             />
           </div>
         </div>
@@ -243,6 +349,7 @@ function EmploymentStep({ formData, updateFormData }: any) {
             onChange={(e) => updateFormData('workEmail', e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
             placeholder="john.doe@company.com"
+            disabled={loading}
           />
           <p className="text-xs text-gray-500 mt-1">Helps verify your employment</p>
         </div>
@@ -254,6 +361,7 @@ function EmploymentStep({ formData, updateFormData }: any) {
             onChange={(e) => updateFormData('monthlySalary', e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
             placeholder="150000"
+            disabled={loading}
           />
           <p className="text-xs text-gray-500 mt-1">We'll verify this through your bank statement</p>
         </div>
@@ -262,7 +370,7 @@ function EmploymentStep({ formData, updateFormData }: any) {
   );
 }
 
-function BankingStep({ formData, updateFormData }: any) {
+function BankingStep({ formData, updateFormData, loading }: any) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   return (
@@ -279,6 +387,7 @@ function BankingStep({ formData, updateFormData }: any) {
               value={formData.bankName}
               onChange={(e) => updateFormData('bankName', e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900"
+              disabled={loading}
             >
               <option value="">Select bank</option>
               <option value="Access Bank">Access Bank</option>
@@ -301,6 +410,7 @@ function BankingStep({ formData, updateFormData }: any) {
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
               placeholder="0123456789"
               maxLength={10}
+              disabled={loading}
             />
           </div>
         </div>
@@ -312,6 +422,7 @@ function BankingStep({ formData, updateFormData }: any) {
               checked={formData.isSalaryAccount}
               onChange={(e) => updateFormData('isSalaryAccount', e.target.checked)}
               className="mt-1 w-4 h-4 text-blue-600"
+              disabled={loading}
             />
             <div>
               <div className="font-medium text-gray-900 text-sm">This is my salary account</div>
@@ -333,6 +444,7 @@ function BankingStep({ formData, updateFormData }: any) {
                 }}
                 className="mt-1 w-4 h-4 text-blue-600"
                 required
+                disabled={loading}
               />
               <div className="text-sm">
                 <span className="font-medium text-gray-900">

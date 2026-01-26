@@ -22,3 +22,10 @@ export async function verifyEmail(data: VerifyEmailData) {
     body: data,
   });
 }
+
+export async function resendOTP(email: string) {
+  return apiHandler("/api/auth/send-otp", {
+    method: "POST",
+    body: { email },
+  });
+}

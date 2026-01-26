@@ -1,13 +1,27 @@
 // models/OTP.ts
-import mongoose from 'mongoose';
+import { IUser } from '@/types';
+import mongoose, { Model } from 'mongoose';
+
+export interface IOTP extends mongoose.Document {
+  phone: string;
+  email?: string;
+  otp: string;
+  type: 'phone' | 'email' | 'bvn';
+  verified: boolean;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const OTPSchema = new mongoose.Schema({
-  phone: { 
+  email: { 
     type: String, 
     required: true 
   },
-  
-  email: String,
+  phone: { 
+    type: String, 
+    required: false 
+  },
   
   otp: { 
     type: String, 
@@ -38,4 +52,8 @@ OTPSchema.index({ phone: 1, type: 1 });
 OTPSchema.index({ email: 1, type: 1 });
 OTPSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // Auto-delete expired OTPs
 
-export default mongoose.models.OTP || mongoose.model('OTP', OTPSchema);
+const Otp: Model<IOTP> =
+  mongoose.models.OTP || mongoose.model<IOTP>("OTP", OTPSchema);
+export default Otp;
+
+// export default mongoose.models.OTP || mongoose.model('OTP', OTPSchema);

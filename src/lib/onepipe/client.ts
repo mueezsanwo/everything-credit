@@ -1,4 +1,4 @@
-// lib/onepipe/client.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   encryptTripleDES,
   encryptBankAccount,
@@ -6,7 +6,7 @@ import {
   generateSignature,
 } from "./encryption";
 
-const ONEPIPE_BASE_URL = "https://api.onepipe.io";
+const ONEPIPE_BASE_URL = "https://api.dev.onepipe.io";
 const API_KEY = process.env.ONEPIPE_API_KEY!;
 const APP_CODE = process.env.ONEPIPE_APP_CODE!;
 const APP_SECRET = process.env.ONEPIPE_APP_SECRET!;
@@ -19,12 +19,35 @@ interface Customer {
   email: string;
 }
 
+interface OnePipeProviderResponse {
+  account_name: string;
+  account_number: string;
+  bank_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  middle_name?: string | null;
+}
+
+interface OnePipeData {
+  provider_response_code?: string;
+  provider_responde_code?: string; // OnePipe typo
+  provider?: string;
+  provider_response?: OnePipeProviderResponse;
+  errors?: { code: string; message: string }[];
+  error?: { code: string; message: string };
+}
+
+interface OnePipeResponse {
+  status: "Successful" | "Failed";
+  message: string | null;
+  data?: OnePipeData;
+}
+
 /**
  * Make request to OnePipe API
  */
 async function callOnePipe(payload: any) {
   const signature = generateSignature(payload.request_ref, APP_SECRET);
-
   const response = await fetch(`${ONEPIPE_BASE_URL}/v2/transact`, {
     method: "POST",
     headers: {
@@ -86,7 +109,7 @@ export async function lookupBVN(bvn: string, customer: Customer) {
 export async function validateBVNOTP(
   otp: string,
   provider: string,
-  originalTransactionRef: string,
+  originalTransactionRef: string
 ) {
   const requestRef = "REQ" + Date.now();
 
@@ -123,7 +146,7 @@ export async function getStatement(
   bankCode: string,
   startDate: string, // Format: "2024-10-01"
   endDate: string, // Format: "2025-01-01"
-  customer: Customer,
+  customer: Customer
 ) {
   const requestRef = "REQ" + Date.now();
 
@@ -311,12 +334,11 @@ export async function collect(
 export async function lookupAccount(
   accountNumber: string,
   bankCode: string,
-  customer: Customer,
-) {
-  const requestRef = "REQ" + Date.now();
-
+  customer: Customer
+): Promise<OnePipeResponse> {
+  const requestRef = Date.now();
   const payload = {
-    request_ref: requestRef,
+    request_ref:  requestRef,
     request_type: "lookup_account_min",
     auth: {
       type: "bank.account",
@@ -326,8 +348,8 @@ export async function lookupAccount(
     },
     transaction: {
       mock_mode: "Live",
-      transaction_ref: "TXN" + Date.now(),
-      transaction_desc: "Account Lookup",
+      transaction_ref:  requestRef,
+      transaction_desc: "A random transaction",
       transaction_ref_parent: null,
       amount: 0,
       customer: {
@@ -358,15 +380,15 @@ export async function getBanks(
     request_ref: requestRef,
     request_type: "get_banks",
     auth: {
-      type: null,
-      secure: null,
+      type: "bvn",
+      secure: encryptBVN(bvn, APP_SECRET),
       auth_provider: "PaywithAccount",
       route_mode: null,
     },
     transaction: {
       mock_mode: "Inspect", // Change to 'Live' in production
       transaction_ref: "TXN" + Date.now(),
-      transaction_desc: "Get Banks for Pay with Account",
+      transaction_desc: "Get Banks for BVN",
       transaction_ref_parent: null,
       amount: 0,
       customer: {
