@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/credit/calculations.ts
 
 interface Transaction {

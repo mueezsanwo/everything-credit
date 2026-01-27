@@ -17,6 +17,7 @@ interface Customer {
   firstName: string;
   lastName: string;
   email: string;
+  dob?: Date;
 }
 
 interface OnePipeProviderResponse {
@@ -65,21 +66,21 @@ async function callOnePipe(payload: any) {
  * 1. BVN Lookup Max - Verify BVN and get personal details
  */
 export async function lookupBVN(bvn: string, customer: Customer) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef = Date.now();
 
   const payload = {
     request_ref: requestRef,
-    request_type: "lookup_bvn_max",
+    request_type: 'lookup_bvn_min',
     auth: {
-      type: "bvn",
+      type: 'bvn',
       secure: encryptBVN(bvn, APP_SECRET),
-      auth_provider: "Bvn",
+      auth_provider: 'PaywithAccount',
       route_mode: null,
     },
     transaction: {
-      mock_mode: "live",
-      transaction_ref: "TXN" + Date.now(),
-      transaction_desc: "BVN Verification",
+      mock_mode: 'live',
+      transaction_ref: requestRef,
+      transaction_desc: 'BVN Verification',
       transaction_ref_parent: null,
       amount: 0,
       customer: {
@@ -90,53 +91,56 @@ export async function lookupBVN(bvn: string, customer: Customer) {
         mobile_no: customer.phone,
       },
       meta: {
-        a_key: "a_meta_value_1",
-        b_key: "a_meta_value_2",
+        a_key: 'a_meta_value_1',
+        b_key: 'a_meta_value_2',
       },
       details: {
-        include_image: false,
-        otp_override: false,
+        dob: customer.dob,
       },
     },
   };
 
-  return callOnePipe(payload);
+    const response = await callOnePipe(payload);
+
+    return {
+      response,
+      transactionRef: requestRef,
+    };
 }
 
-/**
- * Validate BVN OTP (if OnePipe requires OTP)
- */
-export async function validateBVNOTP(
-  otp: string,
-  provider: string,
-  originalTransactionRef: string
-) {
-  const requestRef = "REQ" + Date.now();
+
+export async function validateBVNOTP(otp: string, transactionRef: number) {
+   const requestRef =Date.now() as any;
 
   const payload = {
     request_ref: requestRef,
-    request_type: "lookup_bvn_max",
+    request_type: 'lookup_bvn_min',
     auth: {
+      type: 'bvn',
       secure: encryptTripleDES(otp, APP_SECRET),
-      auth_provider: provider,
+      auth_provider: 'PaywithAccount',
     },
     transaction: {
-      transaction_ref: originalTransactionRef,
+      transaction_ref: transactionRef, 
     },
   };
 
+  console.log('Validating BVN OTP payload:', payload);
+
   const response = await fetch(`${ONEPIPE_BASE_URL}/v2/transact/validate`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
-      Signature: generateSignature(requestRef, APP_SECRET),
+      Signature: generateSignature(requestRef, APP_SECRET), 
     },
     body: JSON.stringify(payload),
   });
 
-  return response.json();
+  const data = await response.json();
+  return data;
 }
+
 
 /**
  * 2. Get Bank Statement - Retrieve transaction history
@@ -198,20 +202,20 @@ export async function createMandate(
   customer: Customer,
   consentPDF?: string // Base64 PDF or image
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef =  Date.now() as any;
 
   const payload = {
     request_ref: requestRef,
-    request_type: "create_mandate",
+    request_type: 'create_mandate',
     auth: {
-      type: "bank.account",
+      type: 'bank.account',
       secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
-      auth_provider: "PaywithAccount",
+      auth_provider: 'PaywithAccount',
     },
     transaction: {
-      mock_mode: "Inspect", // Change to 'Live' in production
-      transaction_ref: "MND" + Date.now(),
-      transaction_desc: "Creating a mandate",
+      mock_mode: 'Inspect', // Change to 'Live' in production
+      transaction_ref: requestRef,
+      transaction_desc: 'Creating a mandate',
       transaction_ref_parent: null,
       amount: 0,
       customer: {
@@ -223,10 +227,14 @@ export async function createMandate(
       },
       meta: {
         amount: maxAmount.toString(),
-        skip_consent: "true",
+        skip_consent: 'true',
         bvn: encryptBVN(bvn, APP_SECRET),
         biller_code: BILLER_CODE,
-        customer_consent: consentPDF || "",
+        customer_consent:
+          consentPDF || 
+          'https://paywithaccount.com/consent_template.pdf',
+        repeat_end_date: '2030-04-10-08-00-00',
+        repeat_frequency: 'once',
       },
       details: {},
     },
@@ -286,24 +294,26 @@ export async function disburse(
  * 5. Collect - Debit user's account (Payment collection)
  */
 export async function collect(
-  mandateToken: string, // Encrypted token from mandate creation
+  accountNumber: string,
+  bankCode: string,
+  // mandateToken: string, // Encrypted token from mandate creation
   amount: number, // In kobo
   customer: Customer,
   narration: string
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef =  Date.now() as any;
 
   const payload = {
     request_ref: requestRef,
-    request_type: "collect",
+    request_type: 'collect',
     auth: {
-      type: "bank.account",
-      secure: mandateToken,
-      auth_provider: "PaywithAccount",
+      type: 'bank.account',
+      secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
+      auth_provider: 'PaywithAccount',
     },
     transaction: {
-      mock_mode: "Live",
-      transaction_ref: "COL" + Date.now(),
+      mock_mode: 'Live',
+      transaction_ref: requestRef,
       transaction_desc: narration,
       transaction_ref_parent: null,
       amount: amount,
@@ -316,8 +326,8 @@ export async function collect(
       },
       meta: {
         biller_code: BILLER_CODE,
-        skip_consent: "true",
-        customer_consent: "",
+        skip_consent: 'true',
+        customer_consent: '',
       },
       details: {},
     },
