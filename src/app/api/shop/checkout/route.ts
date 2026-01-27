@@ -348,34 +348,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /* ---------- CREATE MANDATE (ONCE) ---------- */
-    if (!user.hasMandateCreated) {
-      const mandate = await createMandate(
-        user.accountNumber,
-        user.bankCode,
-        user.maxSingleDebit * 100,
-        user.bvn.replace(/\*/g, ""),
-        {
-          phone: user.phone,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-        },
-      );
-
-      if (mandate.status !== "Successful") {
-        throw new Error("Mandate creation failed");
-      }
-
-      user.hasMandateCreated = true;
-      user.mandateToken =
-        mandate.data?.provider_response?.provider_auth_token;
-      user.mandateRef =
-        mandate.data?.provider_response?.reference;
-      user.mandateStatus = 'ACTIVE';
-
-      await user.save({ session });
-    }
 
     /* ---------- CREATE PURCHASE ---------- */
     const purchase = await Purchase.create(

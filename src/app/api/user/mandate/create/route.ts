@@ -68,7 +68,7 @@ export async function POST() {
     // ✅ Persist mandate
     user.mandateRef = providerResponse.reference;
     user.mandateStatus = providerResponse.status; // ACTIVE
-    user.mandateSubscription_id = response.data?.mandate_subscription_id;
+    user.mandateSubscription_id = providerResponse.meta.subscription_id;
     user.mandateActivatedAt = new Date();
     user.hasMandateCreated = true;
     user.hasAccessedCredit = true;
