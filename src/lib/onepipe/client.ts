@@ -239,6 +239,8 @@ export async function createMandate(
       details: {},
     },
   };
+  console.log('Create Mandate Payload:', payload);
+  
 
   return callOnePipe(payload);
 }

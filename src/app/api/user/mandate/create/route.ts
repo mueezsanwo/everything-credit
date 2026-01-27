@@ -55,6 +55,7 @@ export async function POST() {
       customer,
     );
 
+    console.log('Mandate creation response:', response);
     if (response.status !== 'Successful') {
       throw new Error(response.message || 'Mandate creation failed');
     }
@@ -70,6 +71,7 @@ export async function POST() {
     user.mandateSubscription_id = response.data?.mandate_subscription_id;
     user.mandateActivatedAt = new Date();
     user.hasMandateCreated = true;
+    user.hasAccessedCredit = true;
 
     await user.save();
 
@@ -78,6 +80,7 @@ export async function POST() {
         message: 'Mandate created successfully',
         mandateRef: providerResponse.reference,
         mandateStatus: providerResponse.status,
+        providerResponse,
       },
       { status: 201 },
     );
