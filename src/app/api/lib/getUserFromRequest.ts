@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import connectDB from "./mongodb";
 import { verifyToken } from "@/lib/utils/jwt";
-import User from "@/models/User";
+import User from "@/models/user";
 
 export async function getUserFromRequest() {
   try {

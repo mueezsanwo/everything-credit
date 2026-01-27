@@ -55,3 +55,14 @@ export interface VerifyEmailResponse {
   nextStep: "bvn_verification" | string;
 }
 
+
+
+export interface CalculateCreditData {
+  email: string;
+}
+
+export interface CalculateCreditResponse {
+  message: string;
+  creditLimit: number;
+  availableCredit: number;
+}

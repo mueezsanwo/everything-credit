@@ -6,6 +6,7 @@ import { Shield, CheckCircle, AlertCircle, ArrowLeft, CreditCard } from 'lucide-
 import Link from 'next/link';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/toast';
+import { checkBVN, calculateCredit, createMandate } from '@/lib';
 
 export default function AccessCredit() {
   const router = useRouter();
@@ -13,14 +14,9 @@ export default function AccessCredit() {
 
   const [bvn, setBvn] = useState('');
   const [agreed, setAgreed] = useState(false);
-  const [step, setStep] = useState<'consent' | 'otp' | 'verified' | 'completed'>('consent');
+  const [step, setStep] = useState<'consent' | 'verified' | 'completed'>('consent');
   const [loading, setLoading] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-
-  // Mock data
-  const MOCK_OTP = '123456';
-  const MOCK_CREDIT_LIMIT = 500000; // ₦500,000
 
   // Consent text content
   const consentText = `
@@ -36,28 +32,7 @@ By proceeding, you authorize Everything Credit to:
 You confirm that the information provided (including BVN) is accurate.
 `;
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return;
-    
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  // Step 1: Send BVN to backend
+  // Step 1: Submit BVN and get credit limit
   const handleSubmitBvn = async () => {
     if (!agreed || bvn.length !== 11) {
       showToast('Please enter valid BVN and agree to consent', 'error');
@@ -67,71 +42,84 @@ You confirm that the information provided (including BVN) is accurate.
     setLoading(true);
 
     try {
-      // Mock API call - simulate OTP request
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Validate BVN
+      console.log('Checking BVN:', bvn);
+      const response = await checkBVN(bvn);
+      console.log('BVN Response:', response);
       
-      showToast('OTP sent successfully!', 'success');
-      setStep('otp');
-    } catch (error) {
-      console.error(error);
-      showToast('An error occurred while requesting OTP.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Verify OTP
-  const handleVerifyOtp = async () => {
-    const otpCode = otp.join('');
-    
-    if (otpCode.length !== 6) {
-      showToast('Please enter complete 6-digit OTP', 'error');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      // Mock API call - simulate OTP verification
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Validate OTP
-      if (otpCode === MOCK_OTP) {
-        // Mock: Calculate credit limit based on user data
-        setCreditAmount(MOCK_CREDIT_LIMIT);
-        showToast('BVN verified successfully!', 'success');
-        setStep('verified');
+      if (response.success) {
+        // Get user email from localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userEmail = user.email;
+        
+        console.log('User email:', userEmail);
+        
+        if (!userEmail) {
+          showToast('User email not found. Please login again.', 'error');
+          router.push('/login');
+          return;
+        }
+        
+        // Calculate credit limit
+        console.log('Calculating credit for:', userEmail);
+        const creditResponse = await calculateCredit(userEmail);
+        console.log('Credit Response:', creditResponse);
+        
+        // Check different possible response structures
+        const limit = creditResponse?.creditLimit || creditResponse?.data?.creditLimit;
+        
+        if (limit && limit > 0) {
+          setCreditAmount(limit);
+          showToast('BVN verified successfully!', 'success');
+          setStep('verified');
+        } else {
+          console.error('Unexpected credit response:', creditResponse);
+          showToast(creditResponse?.message || 'Failed to calculate credit. Please try again.', 'error');
+        }
       } else {
-        showToast('Invalid OTP. Please try again. (Use: 123456)', 'error');
-        setOtp(['', '', '', '', '', '']);
+        showToast(response.message || 'BVN validation failed', 'error');
       }
-    } catch (error) {
-      console.error(error);
-      showToast('An error occurred while verifying OTP.', 'error');
+    } catch (error: any) {
+      console.error('Full error:', error);
+      showToast(error?.message || 'An error occurred while validating BVN.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 3: Create mandate and activate credit
+  // Step 2: Create mandate and activate credit
   const handleGetCredit = async () => {
     setLoading(true);
     
     try {
-      // Mock API call - create direct debit mandate
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Creating mandate...');
+      // Create direct debit mandate
+      const response = await createMandate();
+      console.log('Mandate Response:', response);
       
-      // Mock: Update user's available credit
-      showToast('Credit activated successfully!', 'success');
-      setStep('completed');
-      
-      // Redirect to dashboard after showing success
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
-    } catch (error) {
-      console.error(error);
-      showToast('Failed to activate credit. Please try again.', 'error');
+      if (response.mandateRef || response.success) {
+        showToast('Credit activated successfully!', 'success');
+        
+        // Update user data in localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        user.hasAccessedCredit = true;
+        user.creditLimit = creditAmount;
+        user.availableCredit = creditAmount;
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        setStep('completed');
+        
+        // Redirect to dashboard after showing success
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 2000);
+      } else {
+        console.error('Mandate creation failed:', response);
+        showToast(response?.message || 'Failed to activate credit. Please try again.', 'error');
+      }
+    } catch (error: any) {
+      console.error('Mandate error:', error);
+      showToast(error?.message || 'Failed to activate credit. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -211,7 +199,7 @@ You confirm that the information provided (including BVN) is accurate.
                     disabled={!agreed || bvn.length !== 11 || loading}
                     className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Processing...' : 'Request OTP'}
+                    {loading ? 'Verifying BVN...' : 'Submit & View Credit Limit'}
                   </button>
                 </div>
 
@@ -228,73 +216,7 @@ You confirm that the information provided (including BVN) is accurate.
     );
   }
 
-  // Step 2: OTP Verification
-  if (step === 'otp') {
-    return (
-      <>
-        <Toast 
-          show={toast.show} 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={hideToast} 
-        />
-        
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-6 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-          <div className="max-w-md w-full">
-            <Link href="/dashboard" className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-8">
-              <ArrowLeft className="w-5 h-5" />
-              Back to dashboard
-            </Link>
-
-            <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-10 h-10 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Enter OTP</h2>
-                <p className="text-gray-600 mb-6">We have sent an OTP to your registered phone number.</p>
-
-                {/* OTP Input */}
-                <div className="flex gap-2 justify-center mb-6">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      disabled={loading}
-                      className="w-12 h-14 text-center text-black text-2xl font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
-                    />
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleVerifyOtp}
-                  disabled={otp.join('').length !== 6 || loading}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Verifying...' : 'Verify OTP'}
-                </button>
-
-                {/* Helper Text */}
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <p className="text-sm text-gray-700 text-center">
-                    <strong className="text-blue-600">For Demo:</strong> Use code <code className="px-2 py-1 bg-white rounded font-mono">123456</code>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Step 3: Credit Limit Display
+  // Step 2: Credit Limit Display
   if (step === 'verified') {
     return (
       <>
@@ -343,7 +265,7 @@ You confirm that the information provided (including BVN) is accurate.
     );
   }
 
-  // Step 4: Success/Completed
+  // Step 3: Success/Completed
   if (step === 'completed') {
     return (
       <>

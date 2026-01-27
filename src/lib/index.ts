@@ -29,3 +29,30 @@ export async function resendOTP(email: string) {
     body: { email },
   });
 }
+
+export async function calculateCredit(email: string) {
+  return apiHandler("/api/user/calculate-credit", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export async function checkBVN(bvn: string) {
+  return apiHandler("/api/user/check-bvn", {
+    method: "POST",
+    body: { bvn },
+  });
+}
+
+export async function validateBVN(otp: string) {
+  return apiHandler("/api/user/validate-bvn", {
+    method: "POST",
+    body: { otp },
+  });
+}
+
+export async function createMandate() {
+  return apiHandler("/api/user/mandate/create", {
+    method: "POST",
+  });
+}
