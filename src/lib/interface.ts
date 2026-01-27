@@ -13,6 +13,7 @@ export interface SignUpData {
   accountNumber: string;
   isSalaryAccount: boolean;
   agreedToTerms: boolean;
+  dob: string;
 }
 
 export interface SignInData {

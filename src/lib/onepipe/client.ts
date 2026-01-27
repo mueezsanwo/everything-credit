@@ -65,7 +65,7 @@ async function callOnePipe(payload: any) {
  * 1. BVN Lookup Max - Verify BVN and get personal details
  */
 export async function lookupBVN(bvn: string, customer: Customer) {
-  const requestRef = "REQ" + Date.now();
+   const requestRef = Date.now();
 
   const payload = {
     request_ref: requestRef,
@@ -78,7 +78,7 @@ export async function lookupBVN(bvn: string, customer: Customer) {
     },
     transaction: {
       mock_mode: "live",
-      transaction_ref: "TXN" + Date.now(),
+      transaction_ref: requestRef,
       transaction_desc: "BVN Verification",
       transaction_ref_parent: null,
       amount: 0,
@@ -111,7 +111,7 @@ export async function validateBVNOTP(
   provider: string,
   originalTransactionRef: string
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef = Date.now();
 
   const payload = {
     request_ref: requestRef,
@@ -130,7 +130,7 @@ export async function validateBVNOTP(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
-      Signature: generateSignature(requestRef, APP_SECRET),
+      Signature: generateSignature(payload.request_ref, APP_SECRET),
     },
     body: JSON.stringify(payload),
   });

@@ -34,7 +34,7 @@ export function encryptBankAccount(
   bankCode: string,
   APP_SECRET: string
 ): string {
-  const plainText = `${accountNumber};${bankCode}`;
+  const plainText = `${accountNumber};${bankCode} `;
   return encryptTripleDES(plainText, APP_SECRET);
 }
 

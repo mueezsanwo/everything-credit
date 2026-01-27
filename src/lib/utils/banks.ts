@@ -1,6 +1,7 @@
 // lib/utils/banks.ts
 
 export const BANK_CODES: { [key: string]: string } = {
+  // Existing banks
   'Access Bank': '044',
   'GTBank': '058',
   'First Bank': '011',
@@ -13,7 +14,6 @@ export const BANK_CODES: { [key: string]: string } = {
   'Sterling Bank': '232',
   'Union Bank': '032',
   'Unity Bank': '215',
-  'Heritage Bank': '030',
   'FCMB': '214',
   'Stanbic IBTC': '221',
   'Ecobank': '050',
@@ -21,10 +21,13 @@ export const BANK_CODES: { [key: string]: string } = {
   'Jaiz Bank': '301',
   'Providus Bank': '101',
   'SunTrust Bank': '100',
-  'Moniepoint': '256',
-  'PalmPay': '469',
-  'OPay': '305'
+  'First City Monument Bank': '214', // FCMB full name
+  'Parallex Bank': '104',
+  'TAJ Bank': '302',
+  'TCF MFB': '51211',
+  'United Bank For Africa': '033', // UBA full name
 };
+
 
 /**
  * Get bank code from bank name

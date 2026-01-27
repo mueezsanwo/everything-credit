@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CreditCard, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { CreditCard, Mail, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { signIn } from '@/lib';
 import { SignInData } from '@/lib/interface';
 import { useToast } from '@/hooks/useToast';
@@ -13,6 +13,7 @@ import Toast from '@/components/toast';
 export default function Login() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -39,10 +40,10 @@ export default function Login() {
       } else {
         showToast(response.message || 'Login failed. Please try again.', 'error');
       }
-     } catch (err: any) {
-  showToast(err?.message || 'An error occurred. Please try again.', 'error');
-  console.error('Verification error:', err);
-} finally {
+    } catch (err: any) {
+      showToast(err?.message || 'An error occurred. Please try again.', 'error');
+      console.error('Login error:', err);
+    } finally {
       setLoading(false);
     }
   };
@@ -110,16 +111,24 @@ export default function Login() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-900" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
-                    className="w-full pl-10 pr-4 py-3 text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    className="w-full pl-10 pr-12 py-3 text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     placeholder="Enter your password"
                     required
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    disabled={loading}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 

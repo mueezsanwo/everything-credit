@@ -4,11 +4,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CreditCard, User, Hash, Briefcase, Building2, Mail, Landmark, Shield, ArrowLeft } from 'lucide-react';
+import { CreditCard, User, Hash, Briefcase, Building2, Mail, Landmark, Shield, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { signUp } from '@/lib';
 import { SignUpData } from '@/lib/interface';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/toast';
+import { getAllBanks } from '@/lib/utils/banks';
 
 export default function Signup() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Signup() {
     email: '',
     password: '',
     address: '',
+    dob: '',
     companyName: '',
     workEmail: '',
     occupation: '',
@@ -38,7 +40,7 @@ export default function Signup() {
 
   const validateStep = () => {
     if (signupStep === 1) {
-      if (!formData.firstName || !formData.lastName || !formData.phone || !formData.email || !formData.password || !formData.address) {
+      if (!formData.firstName || !formData.lastName || !formData.phone || !formData.email || !formData.password || !formData.address || !formData.dob) {
         showToast('Please fill in all required fields', 'error');
         return false;
       }
@@ -56,6 +58,14 @@ export default function Signup() {
       // Password validation
       if (formData.password.length < 6) {
         showToast('Password must be at least 6 characters', 'error');
+        return false;
+      }
+      // DOB validation - must be at least 18 years old
+      const dob = new Date(formData.dob);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      if (age < 18) {
+        showToast('You must be at least 18 years old', 'error');
         return false;
       }
     }
@@ -101,50 +111,51 @@ export default function Signup() {
     }
   };
 
- const handleSubmit = async () => {
-  if (!validateStep()) return;
-  
-  setLoading(true);
-  
-  try {
-    const signUpData: SignUpData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      phone: formData.phone,
-      email: formData.email,
-      password: formData.password,
-      address: formData.address,
-      companyName: formData.companyName,
-      occupation: formData.occupation,
-      workEmail: formData.workEmail,
-      monthlySalary: Number(formData.monthlySalary),
-      bankName: formData.bankName,
-      accountNumber: formData.accountNumber,
-      isSalaryAccount: formData.isSalaryAccount,
-      agreedToTerms: formData.agreedToTerms
-    };
+  const handleSubmit = async () => {
+    if (!validateStep()) return;
+    
+    setLoading(true);
+    
+    try {
+      const signUpData: SignUpData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        email: formData.email,
+        password: formData.password,
+        address: formData.address,
+        dob: formData.dob,
+        companyName: formData.companyName,
+        occupation: formData.occupation,
+        workEmail: formData.workEmail,
+        monthlySalary: Number(formData.monthlySalary),
+        bankName: formData.bankName,
+        accountNumber: formData.accountNumber,
+        isSalaryAccount: formData.isSalaryAccount,
+        agreedToTerms: formData.agreedToTerms
+      };
 
-    const response = await signUp(signUpData);
+      const response = await signUp(signUpData);
 
-    if (response.success) {
-      localStorage.setItem('verificationEmail', formData.email);
-      
-      showToast('Account created! Please verify your email.', 'success');
-      
-      setTimeout(() => {
-        router.push('/verify-email');
-      }, 1500);
-    } else {
-      showToast(response.message || 'Sign up failed. An error occurred.', 'error');
-    } 
-  } catch (err: any) {
-    const errorMessage = err?.message || 'An error occurred. Please try again.';
-    showToast(errorMessage, 'error');
-    console.error('Sign up error:', err);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (response.success) {
+        localStorage.setItem('verificationEmail', formData.email);
+        
+        showToast('Account created! Please verify your email.', 'success');
+        
+        setTimeout(() => {
+          router.push('/verify-email');
+        }, 1500);
+      } else {
+        showToast(response.message || 'Sign up failed. An error occurred.', 'error');
+      } 
+    } catch (err: any) {
+      const errorMessage = err?.message || 'An error occurred. Please try again.';
+      showToast(errorMessage, 'error');
+      console.error('Sign up error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -218,6 +229,8 @@ export default function Signup() {
 
 // Step Components
 function PersonalInfoStep({ formData, updateFormData, loading }: any) {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div>
       <h3 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -281,6 +294,19 @@ function PersonalInfoStep({ formData, updateFormData, loading }: any) {
           </div>
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+          <input
+            type="date"
+            value={formData.dob}
+            onChange={(e) => updateFormData('dob', e.target.value)}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900"
+            required
+            disabled={loading}
+            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+          />
+          <p className="text-xs text-gray-500 mt-1">You must be at least 18 years old</p>
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Home Address</label>
           <textarea
             value={formData.address}
@@ -294,15 +320,26 @@ function PersonalInfoStep({ formData, updateFormData, loading }: any) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input
-            type="password"
-            value={formData.password}
-            onChange={(e) => updateFormData('password', e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
-            placeholder="Create a strong password"
-            required
-            disabled={loading}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={(e) => updateFormData('password', e.target.value)}
+              className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-900 placeholder-gray-400"
+              placeholder="Create a strong password"
+              required
+              disabled={loading}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={loading}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
         </div>
       </div>
     </div>
@@ -372,6 +409,7 @@ function EmploymentStep({ formData, updateFormData, loading }: any) {
 
 function BankingStep({ formData, updateFormData, loading }: any) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const banks = getAllBanks();
 
   return (
     <div>
@@ -390,15 +428,11 @@ function BankingStep({ formData, updateFormData, loading }: any) {
               disabled={loading}
             >
               <option value="">Select bank</option>
-              <option value="Access Bank">Access Bank</option>
-              <option value="GTBank">GTBank</option>
-              <option value="First Bank">First Bank</option>
-              <option value="UBA">UBA</option>
-              <option value="Zenith Bank">Zenith Bank</option>
-              <option value="Kuda Bank">Kuda Bank</option>
-              <option value="Wema">Wema Bank</option>
-              <option value="Fidelity">Fidelity Bank</option>
-              <option value="Polaris">Polaris Bank</option>
+              {banks.map((bank) => (
+                <option key={bank.code} value={bank.name}>
+                  {bank.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
