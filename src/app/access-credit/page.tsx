@@ -6,7 +6,7 @@ import { Shield, CheckCircle, AlertCircle, ArrowLeft, CreditCard } from 'lucide-
 import Link from 'next/link';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/toast';
-import { checkBVN, calculateCredit, createMandate } from '@/lib';
+import { calculateCredit, createMandate, saveBVN } from '@/lib';
 
 export default function AccessCredit() {
   const router = useRouter();
@@ -42,46 +42,48 @@ You confirm that the information provided (including BVN) is accurate.
     setLoading(true);
 
     try {
-      // Validate BVN
-      console.log('Checking BVN:', bvn);
-      const response = await checkBVN(bvn);
-      console.log('BVN Response:', response);
+      // Save BVN to backend first
+      console.log('Saving BVN:', bvn);
+      const saveBVNResponse = await saveBVN(bvn);
+      console.log('Save BVN Response:', saveBVNResponse);
       
-      if (response.success) {
-        // Get user email from localStorage
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const userEmail = user.email;
-        
-        console.log('User email:', userEmail);
-        
-        if (!userEmail) {
-          showToast('User email not found. Please login again.', 'error');
-          router.push('/login');
-          return;
-        }
-        
-        // Calculate credit limit
-        console.log('Calculating credit for:', userEmail);
-        const creditResponse = await calculateCredit(userEmail);
-        console.log('Credit Response:', creditResponse);
-        
-        // Check different possible response structures
-        const limit = creditResponse?.creditLimit || creditResponse?.data?.creditLimit;
-        
-        if (limit && limit > 0) {
-          setCreditAmount(limit);
-          showToast('BVN verified successfully!', 'success');
-          setStep('verified');
-        } else {
-          console.error('Unexpected credit response:', creditResponse);
-          showToast(creditResponse?.message || 'Failed to calculate credit. Please try again.', 'error');
-        }
+      // Check if BVN was saved successfully
+      if (!saveBVNResponse || !saveBVNResponse.bvnData) {
+        showToast(saveBVNResponse?.message || 'Failed to save BVN. Please try again.', 'error');
+        return;
+      }
+      
+      // Get user email from localStorage
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userEmail = user.email;
+      
+      console.log('User email:', userEmail);
+      
+      if (!userEmail) {
+        showToast('User email not found. Please login again.', 'error');
+        router.push('/login');
+        return;
+      }
+      
+      // Calculate credit limit
+      console.log('Calculating credit for:', userEmail);
+      const creditResponse = await calculateCredit(userEmail);
+      console.log('Credit Response:', creditResponse);
+      
+      // Check different possible response structures
+      const limit = creditResponse?.creditLimit || creditResponse?.data?.creditLimit;
+      
+      if (limit && limit > 0) {
+        setCreditAmount(limit);
+        showToast('Credit limit calculated successfully!', 'success');
+        setStep('verified');
       } else {
-        showToast(response.message || 'BVN validation failed', 'error');
+        console.error('Unexpected credit response:', creditResponse);
+        showToast(creditResponse?.message || 'Failed to calculate credit. Please try again.', 'error');
       }
     } catch (error: any) {
-      console.error('Full error:', error);
-      showToast(error?.message || 'An error occurred while validating BVN.', 'error');
+      console.error('Error:', error);
+      showToast(error?.message || 'An error occurred. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -199,7 +201,7 @@ You confirm that the information provided (including BVN) is accurate.
                     disabled={!agreed || bvn.length !== 11 || loading}
                     className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Verifying BVN...' : 'Submit & View Credit Limit'}
+                    {loading ? 'Processing...' : 'Submit & View Credit Limit'}
                   </button>
                 </div>
 
@@ -233,7 +235,7 @@ You confirm that the information provided (including BVN) is accurate.
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">BVN Verified!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Credit Limit Calculated!</h2>
               <p className="text-gray-600 mb-6">You are eligible for the following credit limit:</p>
               
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-6">

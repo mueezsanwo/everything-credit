@@ -203,7 +203,7 @@ export async function createMandate(
   consentPDF?: string, // Base64 PDF or image
 ) {
   const requestRef =  Date.now() as any;
-
+  
   const payload = {
     request_ref: requestRef,
     request_type: 'create_mandate',
@@ -213,7 +213,7 @@ export async function createMandate(
       auth_provider: 'PaywithAccount',
     },
     transaction: {
-      mock_mode: 'Live', // Change to 'Live' in production
+      mock_mode: 'Inspect', // Change to 'Live' in production
       transaction_ref: requestRef,
       transaction_desc: 'Creating a mandate',
       transaction_ref_parent: null,
@@ -238,8 +238,9 @@ export async function createMandate(
       },
       details: {},
     },
+    
   };
-
+console.log('payload', payload)
   return callOnePipe(payload);
 }
 

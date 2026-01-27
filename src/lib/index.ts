@@ -56,3 +56,10 @@ export async function createMandate() {
     method: "POST",
   });
 }
+
+export async function saveBVN(bvn: string) {
+  return apiHandler("/api/user/bvn", {
+    method: "POST",
+    body: { bvn },
+  });
+}
