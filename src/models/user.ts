@@ -127,7 +127,7 @@ const UserSchema = new mongoose.Schema(
     },
     mandateRef: String, // Reference from OnePipe
     mandateToken: String, // Encrypted token for collect operations
-    mandateSubscription_id: String,
+    mandateSubscription_id: {type: String},
     mandateStatus: {
       type: String,
       enum: ['PENDING', 'ACTIVE', 'EXPIRED', 'INITIATED'],

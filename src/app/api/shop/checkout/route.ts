@@ -5,8 +5,10 @@ import dbConnect from "@/lib/mongodb";
 import User from "@/models/user";
 import Purchase from "@/models/purchase";
 import Payment from "@/models/payment";
-import { createMandate } from "@/lib/onepipe/client";
 import { generatePaymentSchedule } from "@/lib/payments/scheduler";
+import { PRODUCTS } from "../products/route";
+import mongoose from 'mongoose';
+import { getUserFromRequest } from "../../lib/getUserFromRequest";
 
 // export async function POST(request: Request) {
 //   try {
@@ -215,14 +217,15 @@ import { generatePaymentSchedule } from "@/lib/payments/scheduler";
 //     );
 //   }
 // }
-
+// Constants
 const MAX_INSTALLMENTS = 6;
-const FEE_PERCENT = 8;
+const FEE_PERCENT = 8; // 8% BNPL fee
+
 /* ---------- HELPERS ---------- */
 function calculatePurchaseDetails(
   subtotal: number,
   installments: number,
-  feePercent: number,
+  feePercent: number
 ) {
   const fee = Math.ceil((subtotal * feePercent) / 100);
   const totalRepayment = subtotal + fee;
@@ -232,12 +235,30 @@ function calculatePurchaseDetails(
     subtotal,
     fee,
     totalRepayment,
-    monthlyPayment: Math.ceil(monthlyPayment),
+    monthlyPayment,
     installments,
   };
 }
 
+/* Generate payment schedule */
+// function generatePaymentSchedule(purchase: any, userId: string) {
+//   const schedule: any[] = [];
+//   const firstDueDate = new Date(); // today
+//   for (let i = 0; i < purchase.installments; i++) {
+//     const dueDate = new Date(firstDueDate);
+//     dueDate.setMonth(dueDate.getMonth() + i);
 
+//     schedule.push({
+//       purchaseId: purchase.purchaseId,
+//       userId,
+//       installmentNumber: i + 1,
+//       amount: Math.ceil(purchase.totalRepayment / purchase.installments),
+//       dueDate,
+//       status: "pending",
+//     });
+//   }
+//   return schedule;
+// }
 
 /* ================= CHECKOUT ================= */
 export async function POST(request: Request) {
@@ -246,60 +267,59 @@ export async function POST(request: Request) {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+
+
   try {
+        const userId = await getUserFromRequest();
+        if (!userId) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
     const body = await request.json();
-    const { userId, cartItems, installmentPeriod, deliveryAddress } = body;
+    const { cartItems, installmentPeriod, deliveryAddress } = body;
 
     /* ---------- BASIC VALIDATION ---------- */
     if (!userId || !Array.isArray(cartItems) || !installmentPeriod) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     if (installmentPeriod < 1 || installmentPeriod > MAX_INSTALLMENTS) {
       return NextResponse.json(
-        { error: "Installment period must be between 1 and 6 months" },
-        { status: 400 },
+        { error: `Installment period must be between 1 and ${MAX_INSTALLMENTS} months` },
+        { status: 400 }
       );
     }
 
     if (cartItems.length === 0) {
-      return NextResponse.json(
-        { error: "Cart is empty" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
     /* ---------- FETCH USER ---------- */
     const user = await User.findById(userId).session(session);
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     if (!user.hasAccessedCredit) {
       return NextResponse.json(
         { error: "Please access your credit limit first" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     /* ---------- SERVER-SIDE PRICE CHECK ---------- */
     let subtotal = 0;
-    const normalizedItems = [];
+    const normalizedItems: any[] = [];
 
     for (const item of cartItems) {
-      const product = PRODUCTS.find(p => p.id === item.productId);
-
+      const product = PRODUCTS.find((p) => p.id === item.productId);
       if (!product || !product.inStock) {
         return NextResponse.json(
           { error: `${item.name || "Product"} is unavailable` },
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -310,7 +330,7 @@ export async function POST(request: Request) {
         name: product.name,
         price: product.price,
         quantity: item.quantity,
-        image: item.image || "",
+        image: product.image || "",
       });
     }
 
@@ -318,22 +338,21 @@ export async function POST(request: Request) {
     const purchaseDetails = calculatePurchaseDetails(
       subtotal,
       installmentPeriod,
-      FEE_PERCENT,
+      FEE_PERCENT
     );
 
     /* ---------- MONTHLY CREDIT CHECK ---------- */
     if (purchaseDetails.monthlyPayment > user.availableCredit) {
       const suggestedMonths = Math.min(
         MAX_INSTALLMENTS,
-        Math.ceil(purchaseDetails.totalRepayment / user.availableCredit),
+        Math.ceil(purchaseDetails.totalRepayment / user.availableCredit)
       );
-
       return NextResponse.json(
         {
           error: `Monthly payment ₦${purchaseDetails.monthlyPayment.toLocaleString()} exceeds your available credit of ₦${user.availableCredit.toLocaleString()}`,
           suggestion: `Try ${suggestedMonths} months`,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -342,70 +361,40 @@ export async function POST(request: Request) {
     if (purchaseDetails.totalRepayment > maxPurchasable) {
       return NextResponse.json(
         {
-          error: `Total repayment ₦${purchaseDetails.totalRepayment.toLocaleString()} exceeds your maximum limit`,
+          error: `Total repayment ₦${purchaseDetails.totalRepayment.toLocaleString()} exceeds your maximum limit of ₦${maxPurchasable.toLocaleString()}`,
         },
-        { status: 400 },
+        { status: 400 }
       );
-    }
-
-    /* ---------- CREATE MANDATE (ONCE) ---------- */
-    if (!user.hasMandateCreated) {
-      const mandate = await createMandate(
-        user.accountNumber,
-        user.bankCode,
-        user.maxSingleDebit * 100,
-        user.bvn.replace(/\*/g, ""),
-        {
-          phone: user.phone,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-        },
-      );
-
-      if (mandate.status !== "Successful") {
-        throw new Error("Mandate creation failed");
-      }
-
-      user.hasMandateCreated = true;
-      user.mandateToken =
-        mandate.data?.provider_response?.provider_auth_token;
-      user.mandateRef =
-        mandate.data?.provider_response?.reference;
-      user.mandateStatus = 'ACTIVE';
-
-      await user.save({ session });
     }
 
     /* ---------- CREATE PURCHASE ---------- */
     const purchase = await Purchase.create(
-      [{
-        purchaseId: "PUR" + Date.now(),
-        userId: user._id,
-        items: normalizedItems,
-        subtotal: purchaseDetails.subtotal,
-        fee: purchaseDetails.fee,
-        totalRepayment: purchaseDetails.totalRepayment,
-        monthlyPayment: purchaseDetails.monthlyPayment,
-        installments: installmentPeriod,
-        deliveryAddress: deliveryAddress || user.address || "",
-        status: "active",
-      }],
-      { session },
+      [
+        {
+          purchaseId: "PUR" + Date.now(),
+          userId: user._id,
+          items: normalizedItems,
+          subtotal: purchaseDetails.subtotal,
+          fee: purchaseDetails.fee,
+          totalRepayment: purchaseDetails.totalRepayment,
+          monthlyPayment: purchaseDetails.monthlyPayment,
+          installments: installmentPeriod,
+          deliveryAddress: deliveryAddress || user.address || "",
+          status: "active",
+        },
+      ],
+      { session }
     );
 
     /* ---------- PAYMENT SCHEDULE ---------- */
-    const schedule = generatePaymentSchedule(
-      purchase[0],
-      user._id.toString(),
-    );
-
+    const schedule = generatePaymentSchedule(purchase[0], user._id.toString());
     await Payment.insertMany(schedule, { session });
 
     /* ---------- DEDUCT MONTHLY CREDIT ---------- */
     user.availableCredit -= purchaseDetails.monthlyPayment;
     await user.save({ session });
 
+    /* ---------- COMMIT TRANSACTION ---------- */
     await session.commitTransaction();
 
     return NextResponse.json(
@@ -418,20 +407,18 @@ export async function POST(request: Request) {
           monthlyPayment: purchaseDetails.monthlyPayment,
           installments: installmentPeriod,
           firstPaymentDate: schedule[0].dueDate,
+          items: normalizedItems,
         },
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error: any) {
     await session.abortTransaction();
     console.error("Checkout error:", error);
 
     return NextResponse.json(
-      {
-        error: "Checkout failed",
-        details: error.message,
-      },
-      { status: 500 },
+      { error: "Checkout failed", details: error.message },
+      { status: 500 }
     );
   } finally {
     session.endSession();
