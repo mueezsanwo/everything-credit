@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/app/api/lib/mongodb';
 import { getUserFromRequest } from '@/app/api/lib/getUserFromRequest';
-import User from '@/models/User';
+import User from '@/models/user';
 import { collect } from '@/lib/onepipe/client';
 
 export async function POST(request: Request) {

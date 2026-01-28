@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { validateBVNOTP } from '@/lib/onepipe/client';
 import { getUserFromRequest } from '../../lib/getUserFromRequest';
 import connectDB from '@/app/api/lib/mongodb';
-import User from '@/models/User';
+import User from '@/models/user';
 
 export async function POST(request: Request) {
   await connectDB();
