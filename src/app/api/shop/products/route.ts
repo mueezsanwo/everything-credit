@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 
 // Mock products data
-const PRODUCTS = [
+export const PRODUCTS = [
   { id: 1, name: 'Samsung 43" Smart TV', price: 180000, image: '📺', category: 'tv', brand: 'Samsung', inStock: true },
   { id: 2, name: 'LG 8kg Washing Machine', price: 150000, image: '🧺', category: 'appliances', brand: 'LG', inStock: true },
   { id: 3, name: 'Hisense Double Door Fridge', price: 220000, image: '❄️', category: 'appliances', brand: 'Hisense', inStock: true },

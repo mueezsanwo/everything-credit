@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/payments/upcoming/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";

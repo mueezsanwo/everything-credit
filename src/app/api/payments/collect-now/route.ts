@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/payments/collect-now/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
@@ -66,7 +67,9 @@ export async function POST(request: Request) {
 
     // Collect payment
     const collectResponse = await collect(
-      user.mandateToken,
+      // user.mandateToken,
+      user.accountName!,
+      user.accountNumber!,
       payment.amount * 100, // Convert to kobo
       {
         phone: user.phone,
