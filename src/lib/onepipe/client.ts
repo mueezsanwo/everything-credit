@@ -4,9 +4,9 @@ import {
   encryptBankAccount,
   encryptBVN,
   generateSignature,
-} from "./encryption";
+} from './encryption';
 
-const ONEPIPE_BASE_URL = "https://api.dev.onepipe.io";
+const ONEPIPE_BASE_URL = 'https://api.dev.onepipe.io';
 const API_KEY = process.env.ONEPIPE_API_KEY!;
 const APP_CODE = process.env.ONEPIPE_APP_CODE!;
 const APP_SECRET = process.env.ONEPIPE_APP_SECRET!;
@@ -39,7 +39,7 @@ interface OnePipeData {
 }
 
 interface OnePipeResponse {
-  status: "Successful" | "Failed";
+  status: 'Successful' | 'Failed';
   message: string | null;
   data?: OnePipeData;
 }
@@ -50,9 +50,9 @@ interface OnePipeResponse {
 async function callOnePipe(payload: any) {
   const signature = generateSignature(payload.request_ref, APP_SECRET);
   const response = await fetch(`${ONEPIPE_BASE_URL}/v2/transact`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
       Signature: signature,
     },
@@ -100,17 +100,16 @@ export async function lookupBVN(bvn: string, customer: Customer) {
     },
   };
 
-    const response = await callOnePipe(payload);
+  const response = await callOnePipe(payload);
 
-    return {
-      response,
-      transactionRef: requestRef,
-    };
+  return {
+    response,
+    transactionRef: requestRef,
+  };
 }
 
-
 export async function validateBVNOTP(otp: string, transactionRef: number) {
-   const requestRef =Date.now() as any;
+  const requestRef = Date.now() as any;
 
   const payload = {
     request_ref: requestRef,
@@ -121,7 +120,7 @@ export async function validateBVNOTP(otp: string, transactionRef: number) {
       auth_provider: 'PaywithAccount',
     },
     transaction: {
-      transaction_ref: transactionRef, 
+      transaction_ref: transactionRef,
     },
   };
 
@@ -132,7 +131,7 @@ export async function validateBVNOTP(otp: string, transactionRef: number) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${API_KEY}`,
-      Signature: generateSignature(requestRef, APP_SECRET), 
+      Signature: generateSignature(requestRef, APP_SECRET),
     },
     body: JSON.stringify(payload),
   });
@@ -140,7 +139,6 @@ export async function validateBVNOTP(otp: string, transactionRef: number) {
   const data = await response.json();
   return data;
 }
-
 
 /**
  * 2. Get Bank Statement - Retrieve transaction history
@@ -150,23 +148,23 @@ export async function getStatement(
   bankCode: string,
   startDate: string, // Format: "2024-10-01"
   endDate: string, // Format: "2025-01-01"
-  customer: Customer
+  customer: Customer,
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef = 'REQ' + Date.now();
 
   const payload = {
     request_ref: requestRef,
-    request_type: "get_statement",
+    request_type: 'get_statement',
     auth: {
-      type: "bank.account",
+      type: 'bank.account',
       secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
-      auth_provider: "Demoprovider",
+      auth_provider: 'Demoprovider',
       route_mode: null,
     },
     transaction: {
-      mock_mode: "live",
-      transaction_ref: "TXN" + Date.now(),
-      transaction_desc: "Statement Retrieval",
+      mock_mode: 'live',
+      transaction_ref: 'TXN' + Date.now(),
+      transaction_desc: 'Statement Retrieval',
       transaction_ref_parent: null,
       amount: 0,
       customer: {
@@ -177,8 +175,8 @@ export async function getStatement(
         mobile_no: customer.phone,
       },
       meta: {
-        a_key: "a_meta_value_1",
-        another_key: "a_meta_value_2",
+        a_key: 'a_meta_value_1',
+        another_key: 'a_meta_value_2',
       },
       details: {
         start_date: startDate,
@@ -202,18 +200,18 @@ export async function createMandate(
   customer: Customer,
   consentPDF?: string, // Base64 PDF or image
 ) {
-  const requestRef =  Date.now() as any;
-  
+  const requestRef = Date.now() as any;
+
   const payload = {
     request_ref: requestRef,
-    request_type: 'create_mandate',
+    request_type: 'create mandate',
     auth: {
       type: 'bank.account',
       secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
       auth_provider: 'PaywithAccount',
     },
     transaction: {
-      mock_mode: 'Inspect', // Change to 'Live' in production
+      mock_mode: 'Live', // Change to 'Live' in production
       transaction_ref: requestRef,
       transaction_desc: 'Creating a mandate',
       transaction_ref_parent: null,
@@ -231,16 +229,15 @@ export async function createMandate(
         bvn: encryptBVN(bvn, APP_SECRET),
         biller_code: BILLER_CODE,
         customer_consent:
-          consentPDF || 
-          'https://paywithaccount.com/consent_template.pdf',
+          consentPDF || 'https://paywithaccount.com/consent_template.pdf',
         repeat_end_date: '2030-04-10-08-00-00',
         repeat_frequency: 'once',
       },
       details: {},
     },
-    
   };
-console.log('payload', payload)
+  console.log('Create Mandate Payload:', payload);
+
   return callOnePipe(payload);
 }
 
@@ -254,21 +251,21 @@ export async function disburse(
   customer: Customer,
   narration?: string,
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef = 'REQ' + Date.now();
 
   const payload = {
     request_ref: requestRef,
-    request_type: "disburse",
+    request_type: 'disburse',
     auth: {
       type: null,
       secure: null,
-      auth_provider: "PaywithAccount",
+      auth_provider: 'PaywithAccount',
       route_mode: null,
     },
     transaction: {
-      mock_mode: "Inspect", // Change to 'Live' in production
-      transaction_ref: "DSB" + Date.now(),
-      transaction_desc: narration || "Loan Disbursement",
+      mock_mode: 'Inspect', // Change to 'Live' in production
+      transaction_ref: 'DSB' + Date.now(),
+      transaction_desc: narration || 'Loan Disbursement',
       transaction_ref_parent: null,
       amount: amount,
       customer: {
@@ -302,7 +299,7 @@ export async function collect(
   customer: Customer,
   narration: string,
 ) {
-  const requestRef =  Date.now() as any;
+  const requestRef = Date.now() as any;
 
   const payload = {
     request_ref: requestRef,
@@ -345,22 +342,22 @@ export async function collect(
 export async function lookupAccount(
   accountNumber: string,
   bankCode: string,
-  customer: Customer
+  customer: Customer,
 ): Promise<OnePipeResponse> {
   const requestRef = Date.now();
   const payload = {
-    request_ref:  requestRef,
-    request_type: "lookup_account_min",
+    request_ref: requestRef,
+    request_type: 'lookup_account_min',
     auth: {
-      type: "bank.account",
+      type: 'bank.account',
       secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
-      auth_provider: "PaywithAccount",
+      auth_provider: 'PaywithAccount',
       route_mode: null,
     },
     transaction: {
-      mock_mode: "Live",
-      transaction_ref:  requestRef,
-      transaction_desc: "A random transaction",
+      mock_mode: 'Live',
+      transaction_ref: requestRef,
+      transaction_desc: 'A random transaction',
       transaction_ref_parent: null,
       amount: 0,
       customer: {
@@ -385,21 +382,21 @@ export async function getBanks(
   customer: Customer,
   pwaEnabledOnly: boolean = true,
 ) {
-  const requestRef = "REQ" + Date.now();
+  const requestRef = 'REQ' + Date.now();
 
   const payload = {
     request_ref: requestRef,
-    request_type: "get_banks",
+    request_type: 'get_banks',
     auth: {
-      type: "bvn",
+      type: 'bvn',
       secure: encryptBVN(bvn, APP_SECRET),
-      auth_provider: "PaywithAccount",
+      auth_provider: 'PaywithAccount',
       route_mode: null,
     },
     transaction: {
-      mock_mode: "Inspect", // Change to 'Live' in production
-      transaction_ref: "TXN" + Date.now(),
-      transaction_desc: "Get Banks for BVN",
+      mock_mode: 'Inspect', // Change to 'Live' in production
+      transaction_ref: 'TXN' + Date.now(),
+      transaction_desc: 'Get Banks for BVN',
       transaction_ref_parent: null,
       amount: 0,
       customer: {

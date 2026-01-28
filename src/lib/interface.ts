@@ -66,3 +66,91 @@ export interface CalculateCreditResponse {
   creditLimit: number;
   availableCredit: number;
 }
+
+export interface Product {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  brand: string;
+  inStock: boolean;
+}
+
+export interface GetShopProductsResponse {
+  success: boolean;
+  products: Product[];
+}
+
+export interface GetUserProfileResponse {
+  success: boolean;
+  data: {
+    _id: string;
+    email: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    address: string;
+    companyName: string;
+    occupation: string;
+    workEmail: string;
+    monthlySalary: number;
+    bankName: string;
+    bankCode: string;
+    accountNumber: string;
+    hasAccessedCredit: boolean;
+    creditLimit: number;
+    availableCredit: number;
+    hasMandateCreated: boolean;
+    mandateStatus: string;
+    phoneVerified: boolean;
+    emailVerified: boolean;
+    bvnVerified: boolean;
+    status: string;
+    dob: string;
+    createdAt: string;
+    updatedAt: string;
+    lastLogin: string;
+    bvn: string;
+    bvnTransactionRef: number;
+    maxSingleDebit: number;
+    verifiedSalary: number;
+    mandateRef: string;
+    mandateActivatedAt: string;
+    mandateSubscription_id: number;
+  };
+}
+
+
+export interface CartItem {
+  productId: number;
+  quantity: number;
+}
+
+export interface CheckoutData {
+  installmentPeriod: number;
+  deliveryAddress: string;
+  cartItems: CartItem[];
+}
+
+export interface PurchaseItem {
+  productId: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+export interface CheckoutResponse {
+  success: boolean;
+  message: string;
+  purchase: {
+    purchaseId: string;
+    totalRepayment: number;
+    monthlyPayment: number;
+    installments: number;
+    firstPaymentDate: string;
+    items: PurchaseItem[];
+  };
+}
