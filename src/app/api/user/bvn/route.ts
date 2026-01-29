@@ -31,6 +31,7 @@ try {
     const bvnData = body.bvn;
 
     user.bvn = bvn;
+    user.bvnVerified = true
     
 
     await user.save();
