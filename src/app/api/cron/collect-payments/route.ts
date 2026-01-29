@@ -1,35 +1,41 @@
-// app/api/cron/collect-payments/route.ts
-import { NextResponse } from "next/server";
-import dbConnect from "@/lib/mongodb";
-import Payment from "@/models/payment";
-import User from "@/models/user";
-import { collect } from "@/lib/onepipe/client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextResponse } from 'next/server';
+import dbConnect from '@/lib/mongodb';
+import Payment from '@/models/payment';
+import User from '@/models/user';
+import { collect } from '@/lib/onepipe/client';
 
 const CRON_SECRET = process.env.CRON_SECRET!;
 
+const MAX_RETRIES = 3;
+const GRACE_DAYS = 0; // allow collection within 2 days overdue
+
 export async function GET(request: Request) {
   try {
-    // Verify cron secret (from Vercel Cron or manual trigger)
-    const authHeader = request.headers.get("authorization");
+    /* ---------- AUTH CHECK ---------- */
+    const authHeader = request.headers.get('authorization');
+
     if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await dbConnect();
 
-    // Find all pending payments due today or overdue
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    /* ---------- DATE WINDOW ---------- */
+    const now = new Date();
 
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const graceDate = new Date();
+    graceDate.setDate(graceDate.getDate() - GRACE_DAYS);
+
+    /* ---------- FIND DUE PAYMENTS ---------- */
     const duePayments = await Payment.find({
-      status: "pending",
-      dueDate: { $lte: today },
-    }).populate("userId");
+      status: 'pending',
+      retryCount: { $lt: MAX_RETRIES },
+      dueDate: { $gte: graceDate, $lte: endOfToday },
+    }).populate('userId');
 
     console.log(`Found ${duePayments.length} due payments`);
 
@@ -41,82 +47,77 @@ export async function GET(request: Request) {
       errors: [] as any[],
     };
 
-    // Process each payment
+    /* ---------- PROCESS PAYMENTS ---------- */
     for (const payment of duePayments) {
       try {
         const user = payment.userId as any;
 
         if (!user) {
           results.skipped++;
-          results.errors.push({
-            paymentId: payment._id,
-            error: "User not found",
-          });
           continue;
         }
 
-        // Skip if user doesn't have mandate
-        if (!user.hasMandateCreated || !user.mandateToken) {
+        /* ---------- VALIDATIONS ---------- */
+        if (
+          !user.hasMandateCreated ||
+          !user.mandateToken ||
+          user.mandateStatus !== 'active'
+        ) {
           results.skipped++;
-          results.errors.push({
-            paymentId: payment._id,
-            error: "No mandate token",
-            userId: user._id,
-          });
           continue;
         }
 
-        // Skip if mandate is not active
-        if (user.mandateStatus !== "active") {
-          results.skipped++;
-          results.errors.push({
-            paymentId: payment._id,
-            error: "Mandate not active",
-            userId: user._id,
-          });
-          continue;
-        }
+        /* ---------- LOCK PAYMENT ---------- */
+        await Payment.updateOne(
+          { _id: payment._id, status: 'pending' },
+          { status: 'processing' },
+        );
 
-        console.log(`Collecting payment ${payment._id} for user ${user._id}`);
+        console.log(`Collecting payment ${payment._id}`);
 
-        // Collect payment via OnePipe
+        /* ---------- CALL ONEPIPE ---------- */
         const collectResponse = await collect(
-          user.mandateToken,
-          payment.amount * 100, // Convert to kobo
+          user.accountNumber,
+          user.bankCode,
+          payment.amount * 100,
           {
             phone: user.phone,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
           },
-          `Payment ${payment.paymentNumber} - ${payment.loanId ? "Loan Repayment" : "Purchase Installment"}`,
+          `Installment ${payment.paymentNumber}`,
         );
 
-        console.log("Collect response:", collectResponse);
+        console.log('Collect response:', collectResponse);
 
-        // Update payment with transaction ref
+        /* ---------- SAVE TRANSACTION REF ---------- */
         await Payment.updateOne(
           { _id: payment._id },
           {
             transactionRef:
               collectResponse.data?.provider_response?.reference ||
-              "COL" + Date.now(),
+              'COL' + Date.now(),
           },
         );
 
-        if (collectResponse.status === "Successful") {
+        /* ---------- SUCCESS ---------- */
+        if (collectResponse.status === 'Successful') {
           results.successful++;
-          console.log("Payment collection initiated:", payment._id);
-          // Note: Webhook will handle marking as paid
+
+          // Webhook should mark as PAID
+          console.log(`Debit initiated: ${payment._id}`);
         } else {
+          /* ---------- FAILURE ---------- */
           results.failed++;
+
           await Payment.updateOne(
             { _id: payment._id },
             {
-              status: "failed",
-              failureReason: collectResponse.message || "Collection failed",
+              status: 'pending',
               $inc: { retryCount: 1 },
               lastRetryAt: new Date(),
+              failureReason: collectResponse.message || 'Collection failed',
             },
           );
 
@@ -126,37 +127,44 @@ export async function GET(request: Request) {
           });
         }
 
-        // Small delay to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        /* ---------- RATE LIMIT BUFFER ---------- */
+        await new Promise((r) => setTimeout(r, 300));
       } catch (error: any) {
+        console.error('Payment error:', error);
+
         results.failed++;
+
+        await Payment.updateOne(
+          { _id: payment._id },
+          {
+            status: 'pending',
+            $inc: { retryCount: 1 },
+            lastRetryAt: new Date(),
+            failureReason: error.message,
+          },
+        );
+
         results.errors.push({
           paymentId: payment._id,
           error: error.message,
         });
-        console.error("Error collecting payment:", error);
       }
     }
 
-    console.log("Payment collection results:", results);
+    console.log('Collection Results:', results);
 
     return NextResponse.json({
       success: true,
-      message: "Payment collection completed",
-      results: {
-        total: results.total,
-        successful: results.successful,
-        failed: results.failed,
-        skipped: results.skipped,
-        errors: results.errors,
-      },
-      timestamp: new Date().toISOString(),
+      message: 'Collection run completed',
+      results,
+      timestamp: new Date(),
     });
   } catch (error: any) {
-    console.error("Cron job error:", error);
+    console.error('Cron failure:', error);
+
     return NextResponse.json(
       {
-        error: "Cron job failed",
+        error: 'Cron job failed',
         details: error.message,
       },
       { status: 500 },

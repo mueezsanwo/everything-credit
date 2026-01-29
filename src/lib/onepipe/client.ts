@@ -238,6 +238,7 @@ export async function createMandate(
   };
   console.log('Create Mandate Payload:', payload);
 
+
   return callOnePipe(payload);
 }
 
@@ -307,7 +308,7 @@ export async function collect(
     auth: {
       type: 'bank.account',
       secure: encryptBankAccount(accountNumber, bankCode, APP_SECRET),
-      auth_provider: 'PaywithAccount',
+      auth_provider: 'NIBSS',
     },
     transaction: {
       mock_mode: 'Live',
@@ -410,6 +411,45 @@ export async function getBanks(
         pwa_enabled_only: pwaEnabledOnly,
       },
       details: null,
+    },
+  };
+
+  return callOnePipe(payload);
+}
+
+export async function cancelMandate(
+  subscriptionId: string,
+  customer: Customer,
+): Promise<OnePipeResponse> {
+  const requestRef = Date.now();
+
+  const payload = {
+    request_ref: requestRef,
+    request_type: 'cancel_subscription',
+    auth: {
+      type: null,
+      secure: null,
+      auth_provider: 'PaywithAccount',
+      route_mode: null,
+    },
+    transaction: {
+      mock_mode: 'Inspect', // Change to 'Live' in production
+      transaction_ref: requestRef,
+      transaction_desc: 'Cancel Mandate Subscription',
+      transaction_ref_parent: null,
+      amount: 0,
+      customer: {
+        customer_ref: customer.phone,
+        firstname: customer.firstName,
+        surname: customer.lastName,
+        email: customer.email,
+        mobile_no: customer.phone,
+      },
+      meta: {
+        subscription_id: subscriptionId,
+        billwr_code: BILLER_CODE,
+      },
+      details: {},
     },
   };
 

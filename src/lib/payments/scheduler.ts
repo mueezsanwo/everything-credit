@@ -7,23 +7,48 @@
  * @param userId - User ID
  * @returns Array of payment objects ready for DB insertion
  */
+// export function generatePaymentSchedule(purchase: any, userId: string) {
+//   const payments = [];
+  
+//   for (let i = 1; i <= purchase.installments; i++) {
+//     const dueDate = new Date();
+//     dueDate.setMonth(dueDate.getMonth() + i);
+    
+//     payments.push({
+//       purchaseId: purchase._id,
+//       userId: userId,
+//       paymentNumber: i,
+//       dueDate,
+//       amount: purchase.monthlyPayment,
+//       status: 'pending'
+//     });
+//   }
+  
+//   return payments;
+// }
+
 export function generatePaymentSchedule(purchase: any, userId: string) {
   const payments = [];
-  
+  const baseDate = new Date();
+
   for (let i = 1; i <= purchase.installments; i++) {
-    const dueDate = new Date();
-    dueDate.setMonth(dueDate.getMonth() + i);
-    
+    const dueDate = new Date(baseDate);
+
+    // Add i days instead of months
+    dueDate.setDate(dueDate.getDate() + i);
+    dueDate.setHours(9, 0, 0, 0); // 9AM debit time
+
     payments.push({
       purchaseId: purchase._id,
-      userId: userId,
+      userId,
       paymentNumber: i,
       dueDate,
-      amount: purchase.monthlyPayment,
-      status: 'pending'
+      amount: purchase.monthlyPayment, // rename to dailyPayment ideally
+      status: 'pending',
+      retryCount: 0,
     });
   }
-  
+
   return payments;
 }
 

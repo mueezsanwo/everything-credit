@@ -35,7 +35,12 @@ export default function Login() {
         
         // Delay redirect to show success message
         setTimeout(() => {
-          router.push('/dashboard');
+          // Route based on user role
+          if (response.user.role === 'admin') {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
         }, 1000);
       } else {
         showToast(response.message || 'Login failed. Please try again.', 'error');

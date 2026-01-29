@@ -42,13 +42,34 @@ export default function AdminDashboard() {
     setDetailsLoading(true);
     try {
       const response = await getAdminUserDetails(userId);
-      if (response.success) {
-        setSelectedUser(response.user);
-        setUserPurchases(response.purchases);
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      
+      if (response.success || response.user) {
+        // Extract user data - handle MongoDB _doc wrapper
+        let userData = response.user;
+        
+        // If user has _doc property, use that instead
+        if (userData?._doc) {
+          userData = userData._doc;
+        }
+        
+        console.log('Extracted user data:', userData);
+        
+        // Extract purchases - could be in multiple places
+        let purchasesData = response.purchases || userData?.purchases || [];
+        console.log('Extracted purchases:', purchasesData);
+        
+        if (userData) {
+          setSelectedUser(userData);
+          setUserPurchases(purchasesData);
+        } else {
+          showToast('No user data found', 'error');
+        }
       } else {
         showToast('Failed to load user details', 'error');
       }
     } catch (error: any) {
+      console.error('User details error:', error);
       showToast(error?.message || 'Error loading user details', 'error');
     } finally {
       setDetailsLoading(false);
@@ -106,7 +127,7 @@ export default function AdminDashboard() {
                 
                 <div className="text-right">
                   <p className="text-sm text-slate-400 mb-1">Available Credit</p>
-                  <p className="text-2xl font-bold text-green-400">₦{selectedUser.availableCredit.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-400">₦{(selectedUser.availableCredit || 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -127,7 +148,7 @@ export default function AdminDashboard() {
                   
                   <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
                     <p className="text-xs text-slate-400 mb-1">Monthly Salary</p>
-                    <p className="font-semibold text-lg">₦{selectedUser.monthlySalary.toLocaleString()}</p>
+                    <p className="font-semibold text-lg">₦{(selectedUser.monthlySalary || 0).toLocaleString()}</p>
                   </div>
                   
                   <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
@@ -154,7 +175,7 @@ export default function AdminDashboard() {
                 <div>
                   <h2 className="text-2xl font-bold mb-4">Purchases & Payments</h2>
                   
-                  {userPurchases.length === 0 ? (
+                  {!userPurchases || userPurchases.length === 0 ? (
                     <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center">
                       <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-600" />
                       <p className="text-slate-400">No purchases yet</p>
