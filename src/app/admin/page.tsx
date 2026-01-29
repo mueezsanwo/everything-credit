@@ -1,301 +1,379 @@
-// app/admin/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  Users, 
-  Wallet, 
-  ShoppingBag, 
-  TrendingUp, 
-  AlertCircle,
-  RefreshCw,
-  LogOut,
-  CreditCard
-} from 'lucide-react';
+import { Users, Eye, CreditCard, ArrowLeft, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { getAdminUsers, getAdminUserDetails, collectPaymentNow } from '@/lib';
+import { AdminUser, AdminUserDetails, UserPurchaseDetails } from '@/lib/interface';
+import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/toast';
 
 export default function AdminDashboard() {
-  const router = useRouter();
+  const { toast, showToast, hideToast } = useToast();
+  
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<AdminUserDetails | null>(null);
+  const [userPurchases, setUserPurchases] = useState<UserPurchaseDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    verifiedUsers: 0,
-    usersWithCredit: 0,
-    totalLoans: 0,
-    activeLoans: 0,
-    totalPurchases: 0,
-    activePurchases: 0,
-    totalDisbursed: 0,
-    totalOutstanding: 0,
-    pendingPayments: 0
-  });
-  const [collectingPayments, setCollectingPayments] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [collectingPayment, setCollectingPayment] = useState<string | null>(null);
 
+  // Fetch all users on mount
   useEffect(() => {
-    // Check if user is admin (mock check)
-    const userRole = localStorage.getItem('userRole');
-    if (userRole !== 'admin') {
-      router.push('/login');
-      return;
-    }
-
-    fetchStats();
+    fetchUsers();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchUsers = async () => {
     setLoading(true);
     try {
-      // TODO: Call /api/admin/stats when implemented
-      // Mock data for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setStats({
-        totalUsers: 156,
-        verifiedUsers: 142,
-        usersWithCredit: 98,
-        totalLoans: 45,
-        activeLoans: 23,
-        totalPurchases: 67,
-        activePurchases: 34,
-        totalDisbursed: 8500000,
-        totalOutstanding: 3200000,
-        pendingPayments: 12
-      });
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      const response = await getAdminUsers();
+      if (response.success) {
+        setUsers(response.users);
+      } else {
+        showToast('Failed to load users', 'error');
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Error loading users', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCollectPayments = async () => {
-    if (!confirm('Are you sure you want to trigger payment collection?')) {
-      return;
-    }
-
-    setCollectingPayments(true);
+  const fetchUserDetails = async (userId: string) => {
+    setDetailsLoading(true);
     try {
-      const response = await fetch('/api/cron/collect-payments', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'demo-secret'}`
-        }
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(`Payment collection completed!\n\nTotal: ${data.results.total}\nSuccessful: ${data.results.successful}\nFailed: ${data.results.failed}\nSkipped: ${data.results.skipped}`);
-        fetchStats(); // Refresh stats
+      const response = await getAdminUserDetails(userId);
+      if (response.success) {
+        setSelectedUser(response.user);
+        setUserPurchases(response.purchases);
       } else {
-        alert('Payment collection failed: ' + data.error);
+        showToast('Failed to load user details', 'error');
       }
-    } catch (error) {
-      console.error('Payment collection error:', error);
-      alert('Failed to collect payments');
+    } catch (error: any) {
+      showToast(error?.message || 'Error loading user details', 'error');
     } finally {
-      setCollectingPayments(false);
+      setDetailsLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('userRole');
-    router.push('/login');
+  const handleCollectPayment = async (paymentId: string) => {
+    setCollectingPayment(paymentId);
+    try {
+      const response = await collectPaymentNow(paymentId);
+      showToast(response.message, response.message.includes('success') ? 'success' : 'error');
+      
+      // Refresh user details after collection attempt
+      if (selectedUser) {
+        await fetchUserDetails(selectedUser._id);
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to collect payment', 'error');
+    } finally {
+      setCollectingPayment(null);
+    }
   };
 
-  if (loading) {
+  const handleBackToUsers = () => {
+    setSelectedUser(null);
+    setUserPurchases([]);
+    fetchUsers();
+  };
+
+  // User Details View
+  if (selectedUser) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin dashboard...</p>
+      <>
+        <Toast show={toast.show} message={toast.message} type={toast.type} onClose={hideToast} />
+        
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="mb-8">
+              <button
+                onClick={handleBackToUsers}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Users
+              </button>
+              
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </h1>
+                  <p className="text-slate-400">{selectedUser.email}</p>
+                </div>
+                
+                <div className="text-right">
+                  <p className="text-sm text-slate-400 mb-1">Available Credit</p>
+                  <p className="text-2xl font-bold text-green-400">₦{selectedUser.availableCredit.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {detailsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+              </div>
+            ) : (
+              <>
+                {/* User Info Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+                    <p className="text-xs text-slate-400 mb-1">Company</p>
+                    <p className="font-semibold">{selectedUser.companyName}</p>
+                    <p className="text-sm text-slate-400 mt-1">{selectedUser.occupation}</p>
+                  </div>
+                  
+                  <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+                    <p className="text-xs text-slate-400 mb-1">Monthly Salary</p>
+                    <p className="font-semibold text-lg">₦{selectedUser.monthlySalary.toLocaleString()}</p>
+                  </div>
+                  
+                  <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+                    <p className="text-xs text-slate-400 mb-1">Bank Account</p>
+                    <p className="font-semibold">{selectedUser.bankName}</p>
+                    <p className="text-sm text-slate-400 mt-1">{selectedUser.accountNumber}</p>
+                  </div>
+                </div>
+
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2 mb-8">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedUser.emailVerified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    Email {selectedUser.emailVerified ? 'Verified' : 'Unverified'}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedUser.bvnVerified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    BVN {selectedUser.bvnVerified ? 'Verified' : 'Unverified'}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedUser.hasMandateCreated ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                    Mandate {selectedUser.hasMandateCreated ? 'Created' : 'Pending'}
+                  </span>
+                </div>
+
+                {/* Purchases Section */}
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">Purchases & Payments</h2>
+                  
+                  {userPurchases.length === 0 ? (
+                    <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-12 text-center">
+                      <CreditCard className="w-12 h-12 mx-auto mb-3 text-slate-600" />
+                      <p className="text-slate-400">No purchases yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {userPurchases.map((purchase) => (
+                        <div key={purchase._id} className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden">
+                          {/* Purchase Header */}
+                          <div className="p-6 border-b border-slate-700/50">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <p className="text-sm text-slate-400 mb-1">Purchase ID</p>
+                                <p className="font-mono text-sm">{purchase.purchaseId}</p>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                purchase.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'
+                              }`}>
+                                {purchase.status}
+                              </span>
+                            </div>
+                            
+                            {/* Items */}
+                            <div className="space-y-2 mb-4">
+                              {purchase.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-2xl">{item.image}</span>
+                                    <span>{item.name}</span>
+                                  </div>
+                                  <span className="text-slate-400">₦{item.price.toLocaleString()} x {item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* Financial Summary */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-700/30">
+                              <div>
+                                <p className="text-xs text-slate-400 mb-1">Total Repayment</p>
+                                <p className="font-semibold">₦{purchase.totalRepayment.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400 mb-1">Monthly Payment</p>
+                                <p className="font-semibold">₦{purchase.monthlyPayment.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400 mb-1">Total Paid</p>
+                                <p className="font-semibold text-green-400">₦{purchase.totalPaid.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-400 mb-1">Outstanding</p>
+                                <p className="font-semibold text-orange-400">₦{purchase.remainingBalance.toLocaleString()}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Payment Schedule */}
+                          <div className="p-6">
+                            <h3 className="font-semibold mb-3">Payment Schedule</h3>
+                            <div className="space-y-3">
+                              {purchase.payments.map((payment) => (
+                                <div key={payment._id} className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <span className="text-sm font-medium">Payment {payment.paymentNumber}</span>
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                        payment.status === 'paid' 
+                                          ? 'bg-green-500/20 text-green-400'
+                                          : payment.status === 'pending'
+                                          ? 'bg-yellow-500/20 text-yellow-400'
+                                          : 'bg-red-500/20 text-red-400'
+                                      }`}>
+                                        {payment.status}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 space-y-1">
+                                      <p>Due: {new Date(payment.dueDate).toLocaleDateString()}</p>
+                                      <p>Amount: ₦{payment.amount.toLocaleString()}</p>
+                                      {payment.transactionRef && (
+                                        <p className="font-mono">Ref: {payment.transactionRef}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {payment.status === 'pending' && (
+                                    <button
+                                      onClick={() => handleCollectPayment(payment._id)}
+                                      disabled={collectingPayment === payment._id}
+                                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                      {collectingPayment === payment._id ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                          Collecting...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CreditCard className="w-4 h-4" />
+                                          Collect Now
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
+  // Users List View
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CreditCard className="w-8 h-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-600">Everything Credit Administration</p>
+    <>
+      <Toast show={toast.show} message={toast.message} type={toast.type} onClose={hideToast} />
+      
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-400" />
               </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Admin Dashboard
+              </h1>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Logout</span>
-            </button>
+            <p className="text-slate-400">Manage users and their credit purchases</p>
           </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+            </div>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                  <p className="text-sm text-slate-400 mb-1">Total Users</p>
+                  <p className="text-3xl font-bold">{users.length}</p>
+                </div>
+                
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                  <p className="text-sm text-slate-400 mb-1">Users with Credit</p>
+                  <p className="text-3xl font-bold text-green-400">
+                    {users.filter(u => u.availableCredit > 0).length}
+                  </p>
+                </div>
+                
+                <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
+                  <p className="text-sm text-slate-400 mb-1">Active Purchases</p>
+                  <p className="text-3xl font-bold text-purple-400">
+                    {users.reduce((acc, u) => acc + u.purchases.length, 0)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Users Table */}
+              <div className="bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-900/50 border-b border-slate-700/50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Available Credit</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Purchases</th>
+                        <th className="px-6 py-4 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/50">
+                      {users.map((user) => (
+                        <tr key={user._id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-6 py-4">
+                            <p className="font-medium">{user.name}</p>
+                          </td>
+                          <td className="px-6 py-4 text-slate-400 text-sm">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`font-semibold ${user.availableCredit > 0 ? 'text-green-400' : 'text-slate-400'}`}>
+                              ₦{user.availableCredit.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs font-medium">
+                              {user.purchases.length} {user.purchases.length === 1 ? 'purchase' : 'purchases'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => fetchUserDetails(user._id)}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          {/* Users Stats */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="text-sm text-gray-500">Users</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
-              <p className="text-sm text-gray-600">
-                {stats.verifiedUsers} verified • {stats.usersWithCredit} with credit
-              </p>
-            </div>
-          </div>
-
-          {/* Loans Stats */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-green-600" />
-              </div>
-              <span className="text-sm text-gray-500">Loans</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">{stats.totalLoans}</p>
-              <p className="text-sm text-gray-600">
-                {stats.activeLoans} active
-              </p>
-            </div>
-          </div>
-
-          {/* Purchases Stats */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-6 h-6 text-purple-600" />
-              </div>
-              <span className="text-sm text-gray-500">Purchases</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">{stats.totalPurchases}</p>
-              <p className="text-sm text-gray-600">
-                {stats.activePurchases} active
-              </p>
-            </div>
-          </div>
-
-          {/* Pending Payments */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
-              </div>
-              <span className="text-sm text-gray-500">Pending</span>
-            </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">{stats.pendingPayments}</p>
-              <p className="text-sm text-gray-600">
-                payments due
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Financial Overview */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp className="w-8 h-8" />
-              <h3 className="text-xl font-bold">Total Disbursed</h3>
-            </div>
-            <p className="text-4xl font-bold mb-2">₦{(stats.totalDisbursed).toLocaleString()}</p>
-            <p className="text-blue-100 text-sm">All-time loan disbursements</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl shadow-lg p-6 text-white">
-            <div className="flex items-center gap-3 mb-4">
-              <Wallet className="w-8 h-8" />
-              <h3 className="text-xl font-bold">Total Outstanding</h3>
-            </div>
-            <p className="text-4xl font-bold mb-2">₦{(stats.totalOutstanding).toLocaleString()}</p>
-            <p className="text-orange-100 text-sm">Pending repayments</p>
-          </div>
-        </div>
-
-        {/* Admin Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Admin Actions</h3>
-          
-          <div className="space-y-4">
-            {/* Manual Payment Collection */}
-            <div className="flex items-start justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900 mb-1">Collect Due Payments</h4>
-                <p className="text-sm text-gray-600">
-                  Manually trigger payment collection for all due payments. This will call OnePipe Collect API for each pending payment.
-                </p>
-              </div>
-              <button
-                onClick={handleCollectPayments}
-                disabled={collectingPayments}
-                className="ml-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {collectingPayments ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Collect Now
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Refresh Stats */}
-            <div className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900 mb-1">Refresh Statistics</h4>
-                <p className="text-sm text-gray-600">
-                  Reload the latest statistics from the database.
-                </p>
-              </div>
-              <button
-                onClick={fetchStats}
-                disabled={loading}
-                className="ml-4 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium disabled:opacity-50"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-8 bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-gray-700">
-              <p className="font-semibold text-gray-900 mb-1">Admin Dashboard - Demo Version</p>
-              <p>This is a minimal admin dashboard for assessment purposes. In production, you would add:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600">
-                <li>User management (search, view details, suspend accounts)</li>
-                <li>Loan approval workflow</li>
-                <li>Payment monitoring and dispute resolution</li>
-                <li>Detailed analytics and reports</li>
-                <li>Export functionality (CSV, PDF)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </>
   );
 }

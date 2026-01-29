@@ -21,11 +21,11 @@ export const BANK_CODES: { [key: string]: string } = {
   'Jaiz Bank': '301',
   'Providus Bank': '101',
   'SunTrust Bank': '100',
-  'First City Monument Bank': '214', // FCMB full name
+  // 'First City Monument Bank': '214', // FCMB full name
   'Parallex Bank': '104',
   'TAJ Bank': '302',
   'TCF MFB': '51211',
-  'United Bank For Africa': '033', // UBA full name
+  // 'United Bank For Africa': '033', // UBA full name
 };
 
 

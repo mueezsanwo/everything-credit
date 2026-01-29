@@ -154,3 +154,111 @@ export interface CheckoutResponse {
     items: PurchaseItem[];
   };
 }
+
+export interface UserPurchase {
+  purchaseId: string;
+  totalRepayment: number;
+  installments: number;
+  monthlyPayment: number;
+  totalPaid: number;
+  totalOutstanding: number;
+}
+
+export interface AdminUser {
+  _id: string;
+  name: string;
+  email: string;
+  availableCredit: number;
+  purchases: UserPurchase[];
+}
+
+export interface GetAdminUsersResponse {
+  success: boolean;
+  users: AdminUser[];
+}
+
+// Add these interfaces to your existing interface.ts file
+
+export interface PaymentSchedule {
+  _id: string;
+  paymentNumber: number;
+  dueDate: string;
+  amount: number;
+  status: string;
+  retryCount: number;
+  transactionRef?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+export interface UserPurchaseDetails {
+  _id: string;
+  purchaseId: string;
+  userId: string;
+  type: string;
+  items: PurchaseItem[];
+  subtotal: number;
+  fee: number;
+  totalRepayment: number;
+  monthlyPayment: number;
+  installments: number;
+  deliveryStatus: string;
+  deliveryAddress: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  payments: PaymentSchedule[];
+  totalPaid: number;
+  remainingBalance: number;
+}
+
+export interface AdminUserDetails {
+  _id: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  companyName: string;
+  occupation: string;
+  workEmail: string;
+  monthlySalary: number;
+  bankName: string;
+  accountNumber: string;
+  hasAccessedCredit: boolean;
+  creditLimit: number;
+  availableCredit: number;
+  hasMandateCreated: boolean;
+  mandateStatus: string;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  bvnVerified: boolean;
+  status: string;
+  dob: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLogin: string;
+}
+
+export interface GetAdminUserDetailsResponse {
+  success: boolean;
+  user: AdminUserDetails;
+  purchases: UserPurchaseDetails[];
+}
+
+export interface CollectPaymentResponse {
+  message: string;
+}
+
+export interface CancelMandateResponse {
+  message: string;
+}

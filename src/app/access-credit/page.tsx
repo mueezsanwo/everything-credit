@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, CheckCircle, AlertCircle, ArrowLeft, CreditCard } from 'lucide-react';
+import { Shield, CheckCircle, AlertCircle, ArrowLeft, CreditCard, Mail, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/toast';
@@ -17,6 +17,7 @@ export default function AccessCredit() {
   const [step, setStep] = useState<'consent' | 'verified' | 'completed'>('consent');
   const [loading, setLoading] = useState(false);
   const [creditAmount, setCreditAmount] = useState(0);
+  const [activationUrl, setActivationUrl] = useState<string | null>(null);
 
   // Consent text content
   const consentText = `
@@ -107,14 +108,23 @@ You confirm that the information provided (including BVN) is accurate.
         user.hasAccessedCredit = true;
         user.creditLimit = creditAmount;
         user.availableCredit = creditAmount;
+        
+        // Store activation URL if available
+        if (response.activationUrl) {
+          user.activationUrl = response.activationUrl;
+          setActivationUrl(response.activationUrl);
+        }
+        
         localStorage.setItem('user', JSON.stringify(user));
         
         setStep('completed');
         
-        // Redirect to dashboard after showing success
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
+        // Don't auto-redirect if activation URL exists (user needs to complete email process)
+        if (!response.activationUrl) {
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 3000);
+        }
       } else {
         console.error('Mandate creation failed:', response);
         showToast(response?.message || 'Failed to activate credit. Please try again.', 'error');
@@ -293,7 +303,40 @@ You confirm that the information provided (including BVN) is accurate.
                 </p>
               </div>
 
-              <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+              {activationUrl && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-left">
+                  <div className="flex items-start gap-3">
+                    <Mail className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-2 text-sm">Complete Setup via Email</h3>
+                      <p className="text-xs text-gray-700 mb-3">
+                        To finalize your credit activation, please check your email and follow the instructions sent to you. 
+                        Click the link below or in your email to complete the setup process.
+                      </p>
+                      <a
+                        href={activationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        Complete Setup
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!activationUrl && (
+                <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+              )}
+
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium mt-4"
+              >
+                Go to Dashboard
+              </button>
             </div>
           </div>
         </div>

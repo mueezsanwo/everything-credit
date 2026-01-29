@@ -80,6 +80,7 @@ export async function POST() {
         message: 'Mandate created successfully',
         mandateRef: providerResponse.reference,
         mandateStatus: providerResponse.status,
+        activationUrl: providerResponse.meta.activation_url,
         providerResponse,
       },
       { status: 201 },

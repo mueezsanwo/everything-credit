@@ -6,6 +6,10 @@ import {
   GetShopProductsResponse,
   GetUserProfileResponse,
   CheckoutData,
+  GetAdminUsersResponse,
+  GetAdminUserDetailsResponse,
+  CollectPaymentResponse,
+  CancelMandateResponse
 } from './interface';
 import { apiHandler } from '@/services/api-handler';
 
@@ -88,4 +92,29 @@ export async function checkout(checkoutData: CheckoutData) {
     method: 'POST',
     body: checkoutData,
   });
+}
+
+export async function getAdminUsers() {
+  return apiHandler('/api/admin/users', {
+    method: 'GET',
+  }) as Promise<GetAdminUsersResponse>;
+}
+
+export async function getAdminUserDetails(userId: string) {
+  return apiHandler(`/api/admin/users/${userId}`, {
+    method: 'GET',
+  }) as Promise<GetAdminUserDetailsResponse>;
+}
+
+export async function collectPaymentNow(paymentId: string) {
+  return apiHandler('/api/payments/collect-now', {
+    method: 'POST',
+    body: { paymentId },
+  }) as Promise<CollectPaymentResponse>;
+}
+
+export async function cancelMandate() {
+  return apiHandler('/api/user/mandate/cancel', {
+    method: 'POST',
+  }) as Promise<CancelMandateResponse>;
 }
