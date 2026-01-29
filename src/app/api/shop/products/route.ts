@@ -7,7 +7,7 @@ export const PRODUCTS = [
   {
     id: 1,
     name: 'Samsung 43" Smart TV',
-    price: 500,
+    price: 300,
     image: '📺',
     category: 'tv',
     brand: 'Samsung',
@@ -16,7 +16,7 @@ export const PRODUCTS = [
   {
     id: 2,
     name: 'LG 8kg Washing Machine',
-    price: 500,
+    price: 300,
     image: '🧺',
     category: 'appliances',
     brand: 'LG',
@@ -25,7 +25,7 @@ export const PRODUCTS = [
   {
     id: 3,
     name: 'Hisense Double Door Fridge',
-    price: 500,
+    price: 300,
     image: '❄️',
     category: 'appliances',
     brand: 'Hisense',
@@ -34,7 +34,7 @@ export const PRODUCTS = [
   {
     id: 4,
     name: 'Binatone Microwave',
-    price: 500,
+    price: 300,
     image: '🔥',
     category: 'kitchen',
     brand: 'Binatone',
@@ -43,7 +43,7 @@ export const PRODUCTS = [
   {
     id: 5,
     name: 'Nexus Gas Cooker',
-    price: 500,
+    price: 300,
     image: '🍳',
     category: 'kitchen',
     brand: 'Nexus',
@@ -52,7 +52,7 @@ export const PRODUCTS = [
   {
     id: 6,
     name: 'Thermocool Generator',
-    price: 500,
+    price: 300,
     image: '⚡',
     category: 'electronics',
     brand: 'Thermocool',
@@ -61,7 +61,7 @@ export const PRODUCTS = [
   {
     id: 7,
     name: 'Sony Home Theater',
-    price: 500,
+    price: 300,
     image: '🔊',
     category: 'electronics',
     brand: 'Sony',
@@ -70,7 +70,7 @@ export const PRODUCTS = [
   {
     id: 8,
     name: 'LG 55" 4K Smart TV',
-    price: 500,
+    price: 300,
     image: '📺',
     category: 'tv',
     brand: 'LG',

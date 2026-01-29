@@ -199,10 +199,10 @@ export default function Shop() {
       );
       return `Monthly payment (₦${Math.ceil(
         monthlyPayment
-      ).toLocaleString()}) exceeds your available credit of ₦${user.availableCredit.toLocaleString()}. Try selecting ${suggestedMonths} months.`;
+      ).toLocaleString()}) exceeds your available credit of ₦${user.availableCredit.toLocaleString()}. Try selecting ${suggestedMonths > 3 ? 3 : suggestedMonths} months.`;
     }
 
-    const maxPurchasable = user.availableCredit * 6;
+    const maxPurchasable = user.availableCredit * 3;
     if (totalWithFee > maxPurchasable) {
       return `Total amount exceeds your maximum purchasable limit.`;
     }
@@ -336,7 +336,7 @@ export default function Shop() {
                   <div className="p-3">
                     <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
                     <p className="text-lg font-bold text-blue-600 mb-2">₦{product.price.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mb-2">from ₦{Math.ceil((product.price * 1.03) / 6).toLocaleString()}/mo</p>
+                    <p className="text-xs text-gray-500 mb-2">from ₦{Math.ceil((product.price * 1.03) / 3).toLocaleString()}/mo</p>
                     <button
                       onClick={() => addToCart(product)}
                       disabled={!user.hasAccessedCredit}
@@ -413,7 +413,7 @@ export default function Shop() {
                         onChange={(e) => setInstallmentPeriod(Number(e.target.value))}
                         className="w-full text-black px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       >
-                        {[1,2,3,4,5,6].map(m => (
+                        {[1,2,3].map(m => (
                           <option key={m} value={m}>{m} month{m>1?'s':''} - ₦{Math.ceil(totalWithFee/m).toLocaleString()}/mo</option>
                         ))}
                       </select>
@@ -544,28 +544,28 @@ export default function Shop() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-center mb-2">Order Confirmed! 🎉</h1>
+            <h1 className="text-2xl font-bold text-center mb-2 text-black">Order Confirmed! 🎉</h1>
             <p className="text-gray-600 text-center mb-6">Your order has been placed successfully</p>
             
             <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Purchase ID:</span><span className="font-mono font-semibold">{purchaseData.purchaseId}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Items:</span><span className="font-semibold">{cart.length}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Total:</span><span className="font-semibold">₦{purchaseData.totalRepayment.toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">Installments:</span><span className="font-semibold">{purchaseData.installments} months</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Purchase ID:</span><span className="font-mono font-semibold text-black">{purchaseData.purchaseId}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Items:</span><span className="text-black font-semibold">{cart.length}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Total:</span><span className=" text-black font-semibold">₦{purchaseData.totalRepayment.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">Installments:</span><span className="font-semibold text-black">{purchaseData.installments} months</span></div>
               <div className="flex justify-between"><span className="text-gray-600">Monthly:</span><span className="font-bold text-green-600">₦{purchaseData.monthlyPayment.toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600">First Payment:</span><span className="font-semibold">{new Date(purchaseData.firstPaymentDate).toLocaleDateString('en-NG')}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600">First Payment:</span><span className="font-semibold text-black">{new Date(purchaseData.firstPaymentDate).toLocaleDateString('en-NG')}</span></div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-xs space-y-1">
-              <p className="flex items-start gap-2"><CheckCircle className="w-4 h-4 text-blue-600 mt-0.5" />Delivery after 50% payments</p>
-              <p className="flex items-start gap-2"><CheckCircle className="w-4 h-4 text-blue-600 mt-0.5" />Auto-debit monthly</p>
+              <p className="flex items-start gap-2 text-black"><CheckCircle className="w-4 h-4 text-blue-600 mt-0.5" />Delivery after 50% payments</p>
+              <p className="flex items-start gap-2 text-black"><CheckCircle className="w-4 h-4 text-blue-600 mt-0.5" />Auto-debit monthly</p>
             </div>
 
             <div className="flex gap-3">
               <button onClick={() => router.push('/dashboard')} className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors">
                 Dashboard
               </button>
-              <button onClick={() => { setStep('browse'); setCart([]); }} className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+              <button onClick={() => { setStep('browse'); setCart([]); }} className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-black font-semibold hover:bg-gray-400 transition-colors">
                 Shop More
               </button>
             </div>
