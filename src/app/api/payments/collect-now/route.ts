@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     // Check mandate
-    if (!user.hasMandateCreated || !user.mandateToken) {
+    if (!user.hasMandateCreated) {
       return NextResponse.json(
         {
           error: "No mandate token available",

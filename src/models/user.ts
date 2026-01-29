@@ -33,7 +33,7 @@ export interface IUser extends mongoose.Document {
   mandateRef?: string;
   mandateToken?: string;
   mandateSubscription_id?: string;
-  mandateStatus: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'INITIATED';
+  mandateStatus: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'INITIATED' | 'CANCELLED';
   mandateActivatedAt?: Date;
 
   phoneVerified: boolean;
@@ -130,7 +130,7 @@ const UserSchema = new mongoose.Schema(
     mandateSubscription_id: {type: String},
     mandateStatus: {
       type: String,
-      enum: ['PENDING', 'ACTIVE', 'EXPIRED', 'INITIATED'],
+      enum: ['PENDING', 'ACTIVE', 'EXPIRED', 'INITIATED', 'CANCELLED'],
       default: 'PENDING',
     },
     mandateActivatedAt: Date,
