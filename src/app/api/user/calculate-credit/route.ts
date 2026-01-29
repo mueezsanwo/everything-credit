@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   // ✅ Credit calculation (25% capped at ₦100,000)
-  const calculatedCredit = Math.min(monthlySalary * 0.25, 100_000);
+  const calculatedCredit = Math.min(monthlySalary * 0.25, 350);
 
   user.creditLimit = calculatedCredit;
   user.availableCredit = calculatedCredit;
