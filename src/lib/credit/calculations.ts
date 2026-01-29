@@ -90,7 +90,7 @@ export function verifySalary(transactions: Transaction[]): SalaryVerificationRes
  */
 export function calculateCreditLimit(declaredSalary: number): number {
   const limit = declaredSalary * 0.35;
-  return Math.min(Math.floor(limit), 500); // Max ₦100,000
+  return Math.min(Math.floor(limit), 350); // Max ₦100,000
 }
 
 /**
