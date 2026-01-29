@@ -101,30 +101,34 @@ You confirm that the information provided (including BVN) is accurate.
       console.log('Mandate Response:', response);
       
       if (response.mandateRef || response.success) {
-        showToast('Credit activated successfully!', 'success');
-        
+        // Extract activation URL (handle different possible casings/locations)
+        const actUrl = 
+          response.activationurl || 
+          response.activationUrl || 
+          response.providerResponse?.meta?.activation_url;
+
+        if (actUrl) {
+          setActivationUrl(actUrl);
+          showToast('Mandate created! Check your email or use the link below to complete setup.', 'success');
+        } else {
+          showToast('Credit activated successfully!', 'success');
+        }
+
         // Update user data in localStorage
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         user.hasAccessedCredit = true;
         user.creditLimit = creditAmount;
         user.availableCredit = creditAmount;
         
-        // Store activation URL if available
-        if (response.activationUrl) {
-          user.activationUrl = response.activationUrl;
-          setActivationUrl(response.activationUrl);
+        if (actUrl) {
+          user.activationUrl = actUrl;
         }
         
         localStorage.setItem('user', JSON.stringify(user));
         
         setStep('completed');
         
-        // Don't auto-redirect if activation URL exists (user needs to complete email process)
-        if (!response.activationUrl) {
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 3000);
-        }
+        // NO auto-redirect anymore — user stays here to see message/link
       } else {
         console.error('Mandate creation failed:', response);
         showToast(response?.message || 'Failed to activate credit. Please try again.', 'error');
@@ -310,25 +314,24 @@ You confirm that the information provided (including BVN) is accurate.
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-2 text-sm">Complete Setup via Email</h3>
                       <p className="text-xs text-gray-700 mb-3">
-                        To finalize your credit activation, please check your email and follow the instructions sent to you. 
-                        Click the link below or in your email to complete the setup process.
+                        A mandate consent email has been sent to you from PaywithAccount. 
+                        Please check your inbox (and spam/junk folder) and click the link to authorize the direct debit.
+                      </p>
+                      <p className="text-xs text-gray-700 mb-3 font-medium">
+                        Or click below to open the activation link directly:
                       </p>
                       <a
                         href={activationUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
                       >
-                        Complete Setup
+                        Open Activation Link
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {!activationUrl && (
-                <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
               )}
 
               <button
