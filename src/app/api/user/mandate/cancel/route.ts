@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
-import User from '@/models/User';
-import Payment from '@/models/Payment';
+import User from '@/models/user';
+import Payment from '@/models/payment';
 import { cancelMandate } from '@/lib/onepipe/client';
 import { getUserFromRequest } from '@/app/api/lib/getUserFromRequest';
 import connectDB from '@/app/api/lib/mongodb';
