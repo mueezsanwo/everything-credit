@@ -295,10 +295,10 @@ export async function disburse(
 export async function collect(
   accountNumber: string,
   bankCode: string,
-  // mandateToken: string, // Encrypted token from mandate creation
   amount: number, // In kobo
   customer: Customer,
   narration: string,
+  subscriptionId: number, // Add this parameter
 ) {
   const requestRef = Date.now() as any;
 
@@ -313,7 +313,7 @@ export async function collect(
     transaction: {
       mock_mode: 'Live',
       transaction_ref: requestRef,
-      transaction_desc: 'collect due payment',
+      transaction_desc: 'collect due payments',
       transaction_ref_parent: null,
       amount: amount,
       customer: {
@@ -324,6 +324,7 @@ export async function collect(
         mobile_no: customer.phone,
       },
       meta: {
+        subscription_id: subscriptionId, // Use the parameter here
         biller_code: BILLER_CODE,
         skip_consent: 'true',
         customer_consent: '',
@@ -331,10 +332,10 @@ export async function collect(
       details: {},
     },
   };
-
+  
+  console.log('collect payload', payload);
   return callOnePipe(payload);
 }
-
 // lib/onepipe/client.ts (ADD these two new functions)
 
 /**

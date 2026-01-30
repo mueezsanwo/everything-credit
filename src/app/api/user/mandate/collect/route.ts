@@ -25,6 +25,14 @@ export async function POST(request: Request) {
     );
   }
 
+  // Check for subscription_id (mandateSubscription_id in DB)
+  if (!user.mandateSubscription_id) {
+    return NextResponse.json(
+      { error: 'No mandate subscription ID available' },
+      { status: 400 },
+    );
+  }
+
   const { amount, narration } = await request.json();
 
   if (!amount || amount <= 0) {
@@ -55,6 +63,7 @@ export async function POST(request: Request) {
       amount,
       customer,
       narration || 'Loan repayment',
+      user.mandateSubscription_id, // Pass subscription_id as 6th parameter
     );
 
     // ✅ Only deduct after success

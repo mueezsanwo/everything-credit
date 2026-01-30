@@ -87,7 +87,14 @@ export default function AdminDashboard() {
         await fetchUserDetails(selectedUser._id);
       }
     } catch (error: any) {
-      showToast(error?.message || 'Failed to collect payment', 'error');
+       const errorMessage =
+      error?.response?.data?.details?.[0]?.message ||
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error?.message ||
+      'Failed to collect payment';
+
+    showToast(errorMessage, 'error');
     } finally {
       setCollectingPayment(null);
     }
