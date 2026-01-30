@@ -298,7 +298,7 @@ export default function Profile() {
                       <Calendar className="w-5 h-5 text-orange-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-600">Outstanding</p>
+                      <p className="text-xs text-gray-600">Next Payment</p>
                       <p className="text-xl font-bold text-orange-600">₦{(userData.creditLimit - userData.availableCredit).toLocaleString()}</p>
                     </div>
                   </div>
