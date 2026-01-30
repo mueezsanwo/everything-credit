@@ -313,7 +313,7 @@ export async function collect(
     transaction: {
       mock_mode: 'Live',
       transaction_ref: requestRef,
-      transaction_desc: narration,
+      transaction_desc: 'collect due payment',
       transaction_ref_parent: null,
       amount: amount,
       customer: {
@@ -425,7 +425,7 @@ export async function cancelMandate(
 
   const payload = {
     request_ref: requestRef,
-    request_type: 'cancel_subscription',
+    request_type: 'Cancel Mandate',
     auth: {
       type: null,
       secure: null,
