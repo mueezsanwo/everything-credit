@@ -255,9 +255,28 @@ export interface GetAdminUserDetailsResponse {
   purchases: UserPurchaseDetails[];
 }
 
-export interface CollectPaymentResponse {
+// 1. Define both shapes
+export interface CollectPaymentSuccess {
+  success: true;
   message: string;
+  transactionRef?: string;   // optional, from your backend
 }
+
+export interface CollectPaymentError {
+  success?: false;
+  error: string;
+  message?: string;
+  details?: Array<{
+    code: string;
+    message: string;
+  }>;
+}
+
+// 2. Union type for the function return
+export type CollectPaymentResponse =
+  | CollectPaymentSuccess
+  | CollectPaymentError;
+
 
 export interface CancelMandateResponse {
   message: string;

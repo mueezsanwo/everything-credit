@@ -106,7 +106,9 @@ export async function getAdminUserDetails(userId: string) {
   }) as Promise<GetAdminUserDetailsResponse>;
 }
 
-export async function collectPaymentNow(paymentId: string) {
+
+
+export async function collectPaymentNow(paymentId: string): Promise<CollectPaymentResponse> {
   return apiHandler('/api/payments/collect-now', {
     method: 'POST',
     body: { paymentId },

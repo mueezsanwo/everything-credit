@@ -33,15 +33,27 @@ export async function apiHandler<T = any>(
 
     return response.data as T;
   } catch (error: any) {
-    if (error.response) {
-      throw {
-        status: error.response.status,
-        message:
-          error.response.data?.error ||
-          error.response.data?.message ||
-          "An error occurred",
-      };
-    }
-    throw new Error(error.message || "Network error");
+  if (error.response) {
+    // Preserve the FULL data object from the backend
+    const responseData = error.response.data || {};
+
+    throw {
+      status: error.response.status,
+      message:
+        responseData.error ||
+        responseData.message ||
+        "An error occurred",
+      // Add these so frontend can access the real details
+      data: responseData,                // ← the full JSON body
+      details: responseData.details,     // optional shortcut
+    };
   }
+
+  // Network-level error (no response)
+  throw {
+    status: null,
+    message: error.message || "Network error",
+    data: null,
+  };
+}
 }
